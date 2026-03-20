@@ -2,10 +2,14 @@ package com.xddcodec.fs.framework.common.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.core.task.VirtualThreadTaskExecutor;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableAsync;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.concurrent.SimpleAsyncTaskScheduler;
 
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.Executor;
 
 /**
  * 异步任务配置
@@ -14,48 +18,47 @@ import java.util.concurrent.ThreadPoolExecutor;
  * @Author: xddcode
  * @Date: 2025/11/07
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @EnableAsync
+@EnableScheduling
 public class AsyncConfig {
 
     /**
-     * 分片上传线程池
-     * 核心线程数 = CPU核心数 * 2
-     * 最大线程数 = CPU核心数 * 4
+     * 配置@Async默认使用的虚拟线程池
      */
-    @Bean("chunkUploadExecutor")
-    public ThreadPoolTaskExecutor chunkUploadExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        int processors = Runtime.getRuntime().availableProcessors();
+    @Bean
+    public Executor asyncVirtualThreadExecutor() {
 
-        executor.setCorePoolSize(processors * 2);
-        executor.setMaxPoolSize(processors * 4);
-        executor.setQueueCapacity(200);
-        executor.setThreadNamePrefix("chunk-upload-");
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(60);
-        executor.initialize();
-
-        return executor;
+        return new VirtualThreadTaskExecutor("async-virtual-");
     }
 
     /**
-     * 文件合并线程池
+     * 配置定时任务虚拟线程
+     */
+    @Bean
+    public TaskScheduler taskScheduler() {
+        SimpleAsyncTaskScheduler scheduler = new SimpleAsyncTaskScheduler();
+        scheduler.setThreadNamePrefix("scheduler-virtual-");
+        scheduler.setVirtualThreads(true);
+        return scheduler;
+    }
+
+    /**
+     * 分片上传虚拟线程池
+     */
+    @Bean("chunkUploadExecutor")
+    public TaskExecutor chunkUploadExecutor() {
+
+        return new VirtualThreadTaskExecutor("chunk-upload-virtual-");
+    }
+
+    /**
+     * 文件合并虚拟线程池
      */
     @Bean("fileMergeExecutor")
-    public ThreadPoolTaskExecutor fileMergeExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(2);
-        executor.setMaxPoolSize(5);
-        executor.setQueueCapacity(50);
-        executor.setThreadNamePrefix("file-merge-");
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(120);
-        executor.initialize();
+    public TaskExecutor fileMergeExecutor() {
 
-        return executor;
+        return new VirtualThreadTaskExecutor("file-merge-virtual-");
     }
 }
 

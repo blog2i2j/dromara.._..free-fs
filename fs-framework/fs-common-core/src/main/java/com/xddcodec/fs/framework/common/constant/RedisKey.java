@@ -22,6 +22,16 @@ public class RedisKey {
     public static final long LOCK_EXPIRE_SECONDS = 30;
 
     /**
+     * 预览token过期 key
+     */
+    private static final String PREVIEW_TOKEN_KEY = "preview:token";
+
+    /**
+     * 预览token过期时间 默认5分钟
+     */
+    public static final long PREVIEW_TOKEN_EXPIRE = 5 * 60;
+
+    /**
      * 获取验证码key
      *
      * @param email 邮箱
@@ -29,5 +39,15 @@ public class RedisKey {
      */
     public static String getVerifyCodeKey(String email) {
         return String.join(SEPARATOR, BASE_KEY, VERIFY_CODE, email);
+    }
+
+    /**
+     * 获取验证码key
+     *
+     * @param token 预览短链token
+     * @return fs:preview:12df12312312312
+     */
+    public static String getPreviewTokenKey(String token) {
+        return String.join(SEPARATOR, BASE_KEY, PREVIEW_TOKEN_KEY, token);
     }
 }

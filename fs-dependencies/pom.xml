@@ -13,7 +13,7 @@
     <description>基础 bom 文件，管理整个项目的依赖版本</description>
 
     <properties>
-        <revision>2.1.2</revision>
+        <revision>2.2.0</revision>
         <flatten-maven-plugin.version>1.6.0</flatten-maven-plugin.version>
 
         <spring-boot.version>4.0.3</spring-boot.version>
@@ -36,6 +36,9 @@
         <ip2region.version>2.7.0</ip2region.version>
         <transmittable.version>2.14.4</transmittable.version>
         <caffeine.version>3.2.3</caffeine.version>
+        <jodconverter.version>4.4.11</jodconverter.version>
+        <commons-compress.version>1.28.0</commons-compress.version>
+        <xz.version>1.11</xz.version>
     </properties>
 
     <!-- 依赖声明-->
@@ -299,6 +302,33 @@
                 <groupId>com.github.ben-manes.caffeine</groupId>
                 <artifactId>caffeine</artifactId>
                 <version>${caffeine.version}</version>
+            </dependency>
+
+            <!-- LibreOffice 转换核心包 -->
+            <dependency>
+                <groupId>org.jodconverter</groupId>
+                <artifactId>jodconverter-local</artifactId>
+                <version>${jodconverter.version}</version>
+            </dependency>
+            <!-- Spring Boot Starter -->
+            <dependency>
+                <groupId>org.jodconverter</groupId>
+                <artifactId>jodconverter-spring-boot-starter</artifactId>
+                <version>${jodconverter.version}</version>
+            </dependency>
+
+            <!-- Apache Commons Compress -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
+            </dependency>
+
+            <!-- XZ 压缩库，用于支持 7z 格式 -->
+            <dependency>
+                <groupId>org.tukaani</groupId>
+                <artifactId>xz</artifactId>
+                <version>${xz.version}</version>
             </dependency>
 
         </dependencies>

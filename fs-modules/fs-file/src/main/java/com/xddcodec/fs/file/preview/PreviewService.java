@@ -45,6 +45,7 @@ public class PreviewService {
         }
 
         PreviewContext context = PreviewContext.builder()
+                .fileId(fileId)
                 .fileName(fileInfo.getDisplayName())
                 .streamUrl(previewConfig.getStreamApi() + "/" + fileId)
                 .fileSize(fileInfo.getSize())

@@ -1,10 +1,11 @@
 server:
   port: 8080
   tomcat:
-    # tomcat的URI编码
-    uri-encoding: UTF-8
-    # 连接数满后的排队数，默认为100
-    accept-count: 1000
+    # 如果启用了全局虚拟线程，这里的配置会失效
+    threads:
+      min-spare: 50
+      max: 200
+    max-connections: 10000
 spring:
   application:
     name: free-fs
@@ -29,6 +30,11 @@ spring:
   # 开启循环依赖
   main:
     allow-circular-references: true
+    keep-alive: true
+  # 全局启用虚拟线程
+  threads:
+    virtual:
+      enabled: true
   # 模版引擎配置
 #  thymeleaf:
 #    mode: LEGACYHTML5
@@ -87,7 +93,7 @@ mybatis-flex:
     cacheEnabled: true
   global-config:
     # 是否控制台打印 MyBatis-Flex 的 LOGO 及版本号
-    print-banner: true
+    print-banner: false
     # 全局的 ID 生成策略配置:雪花算法
     key-config:
       key-type: Generator

@@ -1,6 +1,7 @@
 package com.xddcodec.fs.file.controller;
 
 import com.xddcodec.fs.file.domain.FileInfo;
+import com.xddcodec.fs.file.preview.ArchiveFilePreviewService;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
 import com.xddcodec.fs.framework.preview.config.FilePreviewConfig;
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -40,6 +42,7 @@ public class FileStreamController {
     private final StorageServiceFacade storageServiceFacade;
     private final FilePreviewConfig previewConfig;
     private final PreviewStrategyManager strategyManager;
+    private final ArchiveFilePreviewService archiveFilePreviewService;
 
     private static final Pattern RANGE_PATTERN = Pattern.compile("bytes=(\\d*)-(\\d*)");
 
@@ -128,6 +131,36 @@ public class FileStreamController {
                 String.format("bytes %d-%d/%d", finalStart, finalEnd, fileSize));
 
         return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).headers(headers).body(stream);
+    }
+
+    /**
+     * 获取压缩包内文件流
+     */
+    @GetMapping("/preview/archive/inner/{tempId}")
+    public ResponseEntity<StreamingResponseBody> previewArchiveInner(@PathVariable String tempId) {
+        log.info("获取压缩包内文件流: tempId={}", tempId);
+        
+        byte[] fileContent = archiveFilePreviewService.getCachedInnerFile(tempId);
+        if (fileContent == null) {
+            log.warn("压缩包内文件缓存已过期或不存在: tempId={}", tempId);
+            return ResponseEntity.notFound().build();
+        }
+
+        StreamingResponseBody stream = outputStream -> {
+            try (InputStream inputStream = new ByteArrayInputStream(fileContent)) {
+                copyStream(inputStream, outputStream);
+            } catch (IOException e) {
+                log.debug("压缩包内文件流传输中断: tempId={}", tempId);
+            }
+        };
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentLength(fileContent.length);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "inline");
+        headers.setCacheControl("no-cache");
+
+        return ResponseEntity.ok().headers(headers).body(stream);
     }
 
     /**

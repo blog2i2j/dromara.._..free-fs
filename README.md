@@ -6,10 +6,10 @@
 
 ### 现代化文件管理网盘系统
 
-一个基于 Spring Boot 3.x 的企业级文件管理网盘系统后端，专注于提供高性能、高可靠的文件存储和管理服务。
+一个基于 Spring Boot 4.x 的企业级文件管理网盘系统后端，专注于提供高性能、高可靠的文件存储和管理服务。
 
- <img src="https://img.shields.io/badge/Spring%20Boot-3.5.4-blue.svg" alt="Downloads">
- <img src="https://img.shields.io/badge/Vue-3.2-blue.svg" alt="Downloads">
+ <img src="https://img.shields.io/badge/Spring%20Boot-4.0.3-blue.svg" alt="Downloads">
+ <img src="https://img.shields.io/badge/React-19-blue.svg" alt="Downloads">
 
 [![star](https://gitee.com/dromara/free-fs/badge/star.svg?theme=dark)](https://gitee.com/dromara/free-fs/stargazers)
 [![fork](https://gitee.com/dromara/free-fs/badge/fork.svg?theme=dark)](https://gitee.com/dromara/free-fs/members)
@@ -56,7 +56,7 @@
 - **秒传功能** - 基于 MD5 双重校验，相同文件秒级完成
 - **插件化存储** - SPI 机制热插拔，5 分钟接入一个新存储平台
 - **模块化架构** - 清晰的分层设计，易于维护和扩展
-- **在线预览** - 支持多种文件格式的在线预览
+- **在线预览** - 支持多种文件格式的在线预览，预览防盗链功能
 - **安全可靠** - JWT 认证、权限控制、文件完整性校验
 
 ### 功能特性
@@ -92,7 +92,7 @@
   scss, sass, less, vue, php, go, rs, rb, swift, kt, scala, json, xml, sql, sh, bash, bat, ps1, cs, toml
   Markdown: md, markdown
 - 音视频: mp4, avi, mkv, mov, wmv, flv, webm, mp3, wav, flac, aac, ogg, m4a, wma
-- 压缩包: zip, rar, 7z, tar, gz, bz2 (支持查看目录结构)
+- 压缩包: zip, rar, 7z, tar (支持查看目录结构，支持预览压缩包中的文件)
 - 其他: drawio
 
 ---
@@ -101,7 +101,7 @@
 
 ### 环境要求
 
-- JDK >= 17
+- JDK >= 21
 - Maven >= 3.8
 - MySQL >= 8.0 或 PostgreSQL >= 14
 - Redis
@@ -193,16 +193,19 @@ free-fs/
 │   ├── fs-swagger/              # API 文档配置
 │   ├── fs-sse/                  # SSE 支持
 │   └── fs-storage-plugin/       # 存储插件框架
-│       ├── storage-plugin-core/        # 插件核心接口
+│       ├── storage-plugin-boot/        # 插件核心管理模块
+│       ├── storage-plugin-core/        # 插件核心接口模块
 │       ├── storage-plugin-local/       # 本地存储插件
 │       ├── storage-plugin-aliyunoss/   # 阿里云 OSS 插件
+│       ├── storage-plugin-kodo/        # 七牛云 kodo 插件
+│       └── storage-plugin-obs/         # 腾讯云 bos 插件
 │       └── storage-plugin-rustfs/      # RustFS 插件
 └── fs-modules/                  # 业务模块
     ├── fs-file/                 # 文件管理模块
     ├── fs-storage/              # 存储平台管理模块
-    ├── fs-system/              # 系统管理模块
-    ├── fs-log/                 # 日志模块
-    └── fs-plan/                # 计划任务模块
+    ├── fs-system/               # 系统管理模块
+    ├── fs-log/                  # 日志模块
+    └── fs-plan/                 # 计划任务模块
 ```
 
 ---

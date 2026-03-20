@@ -9,6 +9,11 @@ import lombok.Data;
 public class PreviewContext {
 
     /**
+     * 文件ID
+     */
+    private String fileId;
+
+    /**
      * 文件名
      */
     private String fileName;
