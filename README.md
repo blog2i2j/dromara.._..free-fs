@@ -39,14 +39,6 @@
 
 ---
 
-### ⚠️ 已废弃仓库 (停止更新)
-
-![Deprecated](https://img.shields.io/badge/Status-DEPRECATED-red.svg)
-
-[![Free FS/free-fs-vue](https://gitee.com/xddcode/free-fs-vue/widgets/widget_card.svg?colors=393222,ebdfc1,fffae5,d8ca9f,393222,a28b40)](https://gitee.com/xddcode/free-fs-vue.git)
-
----
-
 ## 特性
 
 ### 核心亮点
