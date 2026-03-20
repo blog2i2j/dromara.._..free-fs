@@ -18,7 +18,6 @@ import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.framework.common.utils.StringUtils;
-import com.xddcodec.fs.storage.domain.StoragePlatform;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;

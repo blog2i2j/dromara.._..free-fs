@@ -158,15 +158,15 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
             // 创建GetObjectRequest并设置Range
             GetObjectRequest getObjectRequest = new GetObjectRequest(bucketName, objectKey);
             getObjectRequest.setRange(startByte, endByte);
-            
+
             OSSObject ossObject = ossClient.getObject(getObjectRequest);
             if (ossObject == null) {
                 throw new StorageOperationException("文件不存在: " + objectKey);
             }
-            
-            log.debug("{} Range读取文件成功: objectKey={}, startByte={}, endByte={}", 
+
+            log.debug("{} Range读取文件成功: objectKey={}, startByte={}, endByte={}",
                     getLogPrefix(), objectKey, startByte, endByte);
-            
+
             return ossObject.getObjectContent();
         } catch (OSSException e) {
             if ("NoSuchKey".equals(e.getErrorCode())) {
@@ -178,7 +178,7 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
             throw new StorageOperationException(
                     String.format("阿里云OSS Range读取文件失败 [%s]: %s", e.getErrorCode(), e.getErrorMessage()), e);
         } catch (Exception e) {
-            log.error("{} Range读取文件失败: objectKey={}, startByte={}, endByte={}", 
+            log.error("{} Range读取文件失败: objectKey={}, startByte={}, endByte={}",
                     getLogPrefix(), objectKey, startByte, endByte, e);
             throw new StorageOperationException("阿里云OSS Range读取文件失败: " + e.getMessage(), e);
         }
@@ -205,8 +205,23 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
     }
 
     @Override
-    public void rename(String objectKey, String newFileName) {
-
+    public void rename(String objectKey, String destObjectKey) {
+        ensureNotPrototype();
+        try {
+            //拷贝新文件至同目录下
+            ossClient.copyObject(bucketName, objectKey, bucketName, destObjectKey);
+            // 删除原key
+            ossClient.deleteObject(bucketName, objectKey);
+            log.debug("{} 文件重命名成功: sourceKey={}, newKey={}", getLogPrefix(), objectKey, destObjectKey);
+        } catch (OSSException e) {
+            log.error("{} 文件重命名成功失败: sourceKey={}, newKey={}, errorCode={}, errorMessage={}",
+                    getLogPrefix(), objectKey, destObjectKey, e.getErrorCode(), e.getErrorMessage(), e);
+            throw new StorageOperationException(
+                    String.format("阿里云OSS重命名失败 [%s]: %s", e.getErrorCode(), e.getErrorMessage()), e);
+        } catch (Exception e) {
+            log.error("{} 重命名失败: objectKey={}", getLogPrefix(), objectKey, e);
+            throw new StorageOperationException("阿里云OSS重命名失败: " + e.getMessage(), e);
+        }
     }
 
     @Override
@@ -367,10 +382,6 @@ public class AliyunOssStorageServiceImpl extends AbstractStorageOperationService
             CompleteMultipartUploadResult result = ossClient.completeMultipartUpload(completeRequest);
 
             log.info("{} 分片合并成功: objectKey={}, uploadId={}", getLogPrefix(), objectKey, uploadId);
-
-            // 返回文件URL
-//            return getFileUrl(objectKey, null);
-
         } catch (OSSException e) {
             log.error("{} 分片合并失败: objectKey={}, uploadId={}, errorCode={}, errorMessage={}",
                     getLogPrefix(), objectKey, uploadId, e.getErrorCode(), e.getErrorMessage(), e);

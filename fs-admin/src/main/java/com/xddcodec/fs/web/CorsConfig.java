@@ -9,7 +9,7 @@ import org.springframework.web.filter.CorsFilter;
 /**
  * 跨域配置
  *
- * @Author: hao.ding@insentek.com
+ * @Author: xddcode
  * @Date: 2024/8/16 10:10
  */
 @Configuration

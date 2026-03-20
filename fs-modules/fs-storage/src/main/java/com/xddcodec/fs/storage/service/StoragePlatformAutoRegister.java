@@ -1,6 +1,5 @@
 package com.xddcodec.fs.storage.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xddcodec.fs.storage.domain.StoragePlatform;
 import com.xddcodec.fs.storage.mapper.StoragePlatformMapper;
 import com.xddcodec.fs.storage.plugin.boot.StoragePluginRegistry;
@@ -8,10 +7,12 @@ import com.xddcodec.fs.storage.plugin.core.dto.StoragePluginMetadata;
 import com.xddcodec.fs.storage.plugin.core.utils.StorageUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -35,7 +36,7 @@ public class StoragePlatformAutoRegister implements ApplicationRunner {
     private final ObjectMapper objectMapper;
 
     @Override
-    public void run(ApplicationArguments args) {
+    public void run(@NonNull ApplicationArguments args) {
         try {
             syncPluginsToDatabase();
         } catch (DataAccessException e) {

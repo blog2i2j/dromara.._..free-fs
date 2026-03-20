@@ -1,15 +1,16 @@
 package com.xddcodec.fs.framework.common.json;
 
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.xddcodec.fs.framework.common.json.handler.BigNumberSerializer;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.ext.javatime.deser.LocalDateTimeDeserializer;
+import tools.jackson.databind.ext.javatime.ser.LocalDateTimeSerializer;
+import tools.jackson.databind.module.SimpleModule;
+import tools.jackson.databind.ser.std.ToStringSerializer;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -22,24 +23,29 @@ import java.util.TimeZone;
  * @Date: 2023/11/22 15:03
  */
 @Slf4j
-@AutoConfiguration(before = JacksonAutoConfiguration.class)
+@Configuration
 public class JacksonAutoConfigure {
+
+    public static final String DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
+
     @Bean
-    public Jackson2ObjectMapperBuilderCustomizer customizer() {
+    public JsonMapperBuilderCustomizer customizer() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DATETIME_FORMAT);
         return builder -> {
             // 全局配置序列化返回 JSON 处理
-            JavaTimeModule javaTimeModule = new JavaTimeModule();
-            javaTimeModule.addSerializer(Long.class, BigNumberSerializer.INSTANCE);
-            javaTimeModule.addSerializer(Long.TYPE, BigNumberSerializer.INSTANCE);
-            javaTimeModule.addSerializer(BigInteger.class, BigNumberSerializer.INSTANCE);
-            javaTimeModule.addSerializer(BigDecimal.class, ToStringSerializer.instance);
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            javaTimeModule.addSerializer(LocalDateTime.class,
-                new LocalDateTimeSerializer(formatter));
-            javaTimeModule.addDeserializer(LocalDateTime.class,
-                new LocalDateTimeDeserializer(formatter));
-            builder.modules(javaTimeModule);
-            builder.timeZone(TimeZone.getDefault());
+            builder.addModule(new SimpleModule()
+                    .addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(formatter))
+                    .addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(formatter))
+                    .addSerializer(Long.class, BigNumberSerializer.INSTANCE)
+                    .addSerializer(BigInteger.class, BigNumberSerializer.INSTANCE)
+                    .addSerializer(BigDecimal.class, ToStringSerializer.instance)
+                    .addSerializer(Long.TYPE, BigNumberSerializer.instance));
+
+            // 禁止将日期序列化为时间戳（使用配置的格式化字符串）
+            builder.disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS);
+            // 遇到未知属性时不报错（提高容错性，避免字段新增导致反序列化失败）
+            builder.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            builder.defaultTimeZone(TimeZone.getDefault());
             log.info("初始化 jackson 配置");
         };
     }

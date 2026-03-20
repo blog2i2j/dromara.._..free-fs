@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * 接口文档配置
  *
- * @Author: hao.ding@insentek.com
+ * @Author: xddcode
  * @Date: 2024/11/18 14:08
  */
 @Configuration
@@ -23,13 +23,13 @@ public class SwaggerConfigure {
     public OpenAPI springShopOpenAPI() {
         final String loginToken = "BearerAuth";
         return new OpenAPI()
-                .info(new Info().title("FreeFs API")
-                        .description("FreeFs API文档")
-                        .version("v2.0.0")
-                        .license(new License().name("Apache 2.0").url("https://github.com/xddcode/free-fs/blob/master/LICENSE")))
+                .info(new Info().title("Free Fs API")
+                        .description("Free Fs API文档")
+                        .version("v2.1.2")
+                        .license(new License().name("Apache 2.0").url("https://gitee.com/dromara/free-fs/blob/master/LICENSE")))
                 .externalDocs(new ExternalDocumentation()
                         .description("项目文档")
-                        .url("https://doc.elites.chat"))
+                        .url("https://free-fs.top"))
                 .components(new Components()
                         .addSecuritySchemes(loginToken,
                                 new SecurityScheme()

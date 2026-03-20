@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Redis Repository
  *
- * @Author: hao.ding@insentek.com
+ * @Author: xddcode
  * @Date: 2024/7/11 18:04
  */
 @Slf4j

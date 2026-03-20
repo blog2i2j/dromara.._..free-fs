@@ -3,6 +3,7 @@ package com.xddcodec.fs.web;
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.stp.StpUtil;
 import com.xddcodec.fs.framework.security.properties.SecurityProperties;
+import com.xddcodec.fs.interceptor.PreviewInterceptor;
 import com.xddcodec.fs.interceptor.StoragePlatformInterceptor;
 import com.xddcodec.fs.storage.plugin.local.config.LocalStorageProperties;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +15,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 /**
  * Web 配置
  *
- * @Author: hao.ding@insentek.com
+ * @Author: xddcode
  * @Date: 2024/11/18 13:53
  */
 @Configuration
@@ -25,6 +26,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Autowired
     private StoragePlatformInterceptor storagePlatformInterceptor;
+
+    @Autowired
+    private PreviewInterceptor previewInterceptor;
 
     @Autowired
     private LocalStorageProperties storageProperties;
@@ -52,5 +56,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns(securityProperties.getPathPattern())
                 .excludePathPatterns(securityProperties.getExcludes())
                 .order(2);
+
+        //注册文件预览防盗链拦截器
+        registry.addInterceptor(previewInterceptor)
+                .addPathPatterns("/preview/**", "/archive/preview/**", "/api/file/stream/preview/archive/inner/**")
+                .excludePathPatterns("/preview/token/**", "/preview/error", "/archive/preview/token/**")
+                .order(3);
     }
 }

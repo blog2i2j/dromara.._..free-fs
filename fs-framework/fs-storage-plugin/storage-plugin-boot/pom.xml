@@ -26,10 +26,16 @@
             <artifactId>storage-plugin-aliyunoss</artifactId>
         </dependency>
 
-        <!-- RustFSs插件（可选，根据需要添加） -->
+        <!-- RustFS插件（可选，根据需要添加） -->
         <dependency>
             <groupId>com.xddcodec.fs</groupId>
             <artifactId>storage-plugin-rustfs</artifactId>
+        </dependency>
+
+        <!-- 华为云OBS插件（可选，根据需要添加） -->
+        <dependency>
+            <groupId>com.xddcodec.fs</groupId>
+            <artifactId>storage-plugin-obs</artifactId>
         </dependency>
     </dependencies>
 </project>

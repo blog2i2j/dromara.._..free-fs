@@ -6,10 +6,10 @@ spring:
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
     # postgresql数据库配置
-#    url: jdbc:postgresql://192.168.199.20:5432/free-fs?useUnicode=true&characterEncoding=utf8&useSSL=true&autoReconnect=true&reWriteBatchedInserts=true
-#    username: postgres
-#    password: postgres
-#    driver-class-name: org.postgresql.Driver
+    #    url: jdbc:postgresql://192.168.199.20:5432/free-fs?useUnicode=true&characterEncoding=utf8&useSSL=true&autoReconnect=true&reWriteBatchedInserts=true
+    #    username: postgres
+    #    password: postgres
+    #    driver-class-name: org.postgresql.Driver
     # 数据源配置
     hikari:
       # 最大连接池数量

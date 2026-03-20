@@ -4,7 +4,7 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 
 /**
- * @Author: hao.ding@insentek.com
+ * @Author: xddcode
  * @Date: 2024/12/4 9:25
  */
 @Data

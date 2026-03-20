@@ -1,9 +1,7 @@
 package com.xddcodec.fs.file.domain.vo;
 
-
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.xddcodec.fs.file.domain.FileShare;
-import com.xddcodec.fs.file.enums.FileShareScope;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 

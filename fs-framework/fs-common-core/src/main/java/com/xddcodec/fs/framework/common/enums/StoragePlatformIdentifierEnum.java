@@ -28,7 +28,7 @@ import lombok.Getter;
  * String identifier = metadata.getIdentifier();
  * }</pre>
  *
- * @Author: hao.ding@insentek.com
+ * @Author: xddcode
  * @Date: 2025/5/8 9:06
  * @deprecated 自 v2.0 起废弃，请使用 {@code @StoragePlugin} 注解声明插件元数据
  * @see com.xddcodec.fs.storage.plugin.core.annotation.StoragePlugin

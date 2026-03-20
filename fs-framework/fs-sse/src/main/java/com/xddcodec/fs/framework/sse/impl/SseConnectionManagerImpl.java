@@ -1,11 +1,11 @@
 package com.xddcodec.fs.framework.sse.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xddcodec.fs.framework.sse.SseConnectionManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;

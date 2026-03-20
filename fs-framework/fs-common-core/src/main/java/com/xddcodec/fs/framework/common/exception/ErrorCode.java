@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 /**
  * 错误编码
  *
- * @Author: hao.ding@insentek.com
+ * @Author: xddcode
  * @Date: 2023/11/21 18:14
  */
 @Getter

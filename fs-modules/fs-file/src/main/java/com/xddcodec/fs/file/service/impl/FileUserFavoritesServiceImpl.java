@@ -27,7 +27,7 @@ import static com.xddcodec.fs.file.domain.table.FileUserFavoritesTableDef.FILE_U
 /**
  * 用户收藏文件服务实现类
  *
- * @Author: hao.ding@insentek.com
+ * @Author: xddcode
  * @Date: 2025/5/12 13:50
  */
 @Slf4j

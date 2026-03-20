@@ -21,5 +21,6 @@
         <module>storage-plugin-aliyunoss</module>
         <module>storage-plugin-rustfs</module>
         <module>storage-plugin-kodo</module>
+        <module>storage-plugin-obs</module>
     </modules>
 </project>

@@ -6,10 +6,10 @@
 
 ### 现代化文件管理网盘系统
 
-一个基于 Spring Boot 3.x 的企业级文件管理网盘系统后端，专注于提供高性能、高可靠的文件存储和管理服务。
+一个基于 Spring Boot 4.x 的企业级文件管理网盘系统后端，专注于提供高性能、高可靠的文件存储和管理服务。
 
- <img src="https://img.shields.io/badge/Spring%20Boot-3.5.4-blue.svg" alt="Downloads">
- <img src="https://img.shields.io/badge/Vue-3.2-blue.svg" alt="Downloads">
+ <img src="https://img.shields.io/badge/Spring%20Boot-4.0.3-blue.svg" alt="Downloads">
+ <img src="https://img.shields.io/badge/React-19-blue.svg" alt="Downloads">
 
 [![star](https://gitee.com/dromara/free-fs/badge/star.svg?theme=dark)](https://gitee.com/dromara/free-fs/stargazers)
 [![fork](https://gitee.com/dromara/free-fs/badge/fork.svg?theme=dark)](https://gitee.com/dromara/free-fs/members)
@@ -31,18 +31,11 @@
 
 [GitHub：https://github.com/dromara/free-fs](https://github.com/dromara/free-fs)
 
-
 ## 前端仓库
 
 ### 🚀 推荐仓库 (最新)
+
 [![Free FS/free-fs-frontend](https://gitee.com/xddcode/free-fs-frontend/widgets/widget_card.svg?colors=393222,ebdfc1,fffae5,d8ca9f,393222,a28b40)](https://gitee.com/xddcode/free-fs-frontend.git)
-
----
-
-### ⚠️ 已废弃仓库 (停止更新)
-![Deprecated](https://img.shields.io/badge/Status-DEPRECATED-red.svg)
-
-[![Free FS/free-fs-vue](https://gitee.com/xddcode/free-fs-vue/widgets/widget_card.svg?colors=393222,ebdfc1,fffae5,d8ca9f,393222,a28b40)](https://gitee.com/xddcode/free-fs-vue.git)
 
 ---
 
@@ -55,7 +48,7 @@
 - **秒传功能** - 基于 MD5 双重校验，相同文件秒级完成
 - **插件化存储** - SPI 机制热插拔，5 分钟接入一个新存储平台
 - **模块化架构** - 清晰的分层设计，易于维护和扩展
-- **在线预览** - 支持多种文件格式的在线预览
+- **在线预览** - 支持多种文件格式的在线预览，预览防盗链功能
 - **安全可靠** - JWT 认证、权限控制、文件完整性校验
 
 ### 功能特性
@@ -87,10 +80,11 @@
 
 - 图片: jpg, jpeg, png, gif, bmp, webp, svg, tif, tiff
 - 文档: pdf, doc, docx, xls, xlsx, csv, ppt, pptx
-- 文本/代码: txt, log, ini, properties, yaml, yml, conf, java, js, jsx, ts, tsx, py, c, cpp, h, hpp, cc, cxx, html, css, scss, sass, less, vue, php, go, rs, rb, swift, kt, scala, json, xml, sql, sh, bash, bat, ps1, cs, toml
-Markdown: md, markdown
+- 文本/代码: txt, log, ini, properties, yaml, yml, conf, java, js, jsx, ts, tsx, py, c, cpp, h, hpp, cc, cxx, html, css,
+  scss, sass, less, vue, php, go, rs, rb, swift, kt, scala, json, xml, sql, sh, bash, bat, ps1, cs, toml
+  Markdown: md, markdown
 - 音视频: mp4, avi, mkv, mov, wmv, flv, webm, mp3, wav, flac, aac, ogg, m4a, wma
-- 压缩包: zip, rar, 7z, tar, gz, bz2 (支持查看目录结构)
+- 压缩包: zip, rar, 7z, tar (支持查看目录结构，支持预览压缩包中的文件)
 - 其他: drawio
 
 ---
@@ -99,7 +93,7 @@ Markdown: md, markdown
 
 ### 环境要求
 
-- JDK >= 17
+- JDK >= 21
 - Maven >= 3.8
 - MySQL >= 8.0 或 PostgreSQL >= 14
 - Redis
@@ -131,7 +125,7 @@ mvn clean install -DskipTests
     psql -U postgres -c "CREATE DATABASE free-fs;"
     psql -U postgres -d free-fs -f _sql/postgresql/free-fs_pg.sql
    ```
-   
+
 2. **修改配置文件**
 
    修改 `fs-admin/src/main/resources/application-dev.yml` 中的数据库和 Redis 配置
@@ -161,17 +155,17 @@ mvn spring-boot:run
 
 ## 界面预览
 
-| 功能   | 效果图                                                                                                                   | 效果图                                                                                                                     | 效果图                                                                                                                          |
-|------|-----------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| 登录   | <img alt="login.png"  width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/login.png"/>              | <img alt="register.png"  width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/register.png"/>          | <img alt="forget_password.png"  width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/forget_password.png"/> |
-| 首页   | <img alt="dashboard.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/dashboard.png"/>       |                                                                                                                         |                                                                                                                              |
-| 我的文件 | <img alt="grid_file.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/grid_file.png"/>       | <img alt="file.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/file.png"/>                   |                                                                                                                              |
-| 回收站  | <img alt="recycle.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/recycle.png"/>           | <img alt="recycle_clear.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/recycle_clear.png"/> |                                                                                                                              |
-| 分享文件 | <img alt="share.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/share.png"/>               | <img alt="share_create.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/share_create.png"/>   | <img alt="share_list.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/share_list.png"/>            |
-| 移动文件 | <img alt="move.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/move.png"/>                 |                                                                                                                         |                                                                                                                              |
-| 传输   | <img alt="transmission.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/transmission.png"/> |                                                                                                                         |                                                                                                                              |
-| 存储平台 | <img alt="storage.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/storage.png"/>           | <img alt="add_storage.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/add_storage.png"/>     | <img alt="enable_storage.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/enable_storage.png"/>    |
-| 个人信息 | <img alt="profile.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/profile.png"/>           | <img alt="profile_auth.png" width="600" src="https://gitee.com/dromara/free-fs/raw/master/.images/profile_auth.png"/>   |                                                                                                                              |
+| 功能   | 效果图                                                                                                                  | 效果图                                                                                                                     | 效果图                                                                                                                          |
+|------|----------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| 登录   | <img alt="login.png"  width="600" src=".images/login.png"/>                                                          | <img alt="register.png"  width="600" src=".images/register.png"/>          | <img alt="forget_password.png"  width="600" src=".images/forget_password.png"/> |
+| 首页   | <img alt="dashboard.png" width="600" src=".images/dashboard.png"/>      |                                                                                                                         |                                                                                                                              |
+| 我的文件 | <img alt="grid_file.png" width="600" src=".images/grid_file.png"/>      | <img alt="file.png" width="600" src=".images/file.png"/>                   |                                                                                                                              |
+| 回收站  | <img alt="recycle.png" width="600" src=".images/recycle.png"/>          | <img alt="recycle_clear.png" width="600" src=".images/recycle_clear.png"/> |                                                                                                                              |
+| 分享文件 | <img alt="share.png" width="600" src=".images/share.png"/>              | <img alt="share_create.png" width="600" src=".images/share_create.png"/>   | <img alt="share_list.png" width="600" src=".images/share_list.png"/>            |
+| 移动文件 | <img alt="move.png" width="600" src=".images/move.png"/>                |                                                                                                                         |                                                                                                                              |
+| 传输   | <img alt="transmission.png" width="600" src=".images/transmission.png"/> |                                                                                                                         |                                                                                                                              |
+| 存储平台 | <img alt="storage.png" width="600" src=".images/storage.png"/>          | <img alt="add_storage.png" width="600" src=".images/add_storage.png"/>     | <img alt="enable_storage.png" width="600" src=".images/enable_storage.png"/>    |
+| 个人信息 | <img alt="profile.png" width="600" src=".images/profile.png"/>          | <img alt="profile_auth.png" width="600" src=".images/profile_auth.png"/>   |                                                                                                                              |
 
 ---
 
@@ -191,16 +185,19 @@ free-fs/
 │   ├── fs-swagger/              # API 文档配置
 │   ├── fs-sse/                  # SSE 支持
 │   └── fs-storage-plugin/       # 存储插件框架
-│       ├── storage-plugin-core/        # 插件核心接口
+│       ├── storage-plugin-boot/        # 插件核心管理模块
+│       ├── storage-plugin-core/        # 插件核心接口模块
 │       ├── storage-plugin-local/       # 本地存储插件
 │       ├── storage-plugin-aliyunoss/   # 阿里云 OSS 插件
+│       ├── storage-plugin-kodo/        # 七牛云 kodo 插件
+│       └── storage-plugin-obs/         # 腾讯云 bos 插件
 │       └── storage-plugin-rustfs/      # RustFS 插件
 └── fs-modules/                  # 业务模块
     ├── fs-file/                 # 文件管理模块
     ├── fs-storage/              # 存储平台管理模块
-    ├── fs-system/              # 系统管理模块
-    ├── fs-log/                 # 日志模块
-    └── fs-plan/                # 计划任务模块
+    ├── fs-system/               # 系统管理模块
+    ├── fs-log/                  # 日志模块
+    └── fs-plan/                 # 计划任务模块
 ```
 
 ---
@@ -278,15 +275,15 @@ chore: 构建/工具链更新
 
   **添加微信，请注明来意**
 
-<img alt="wx.png" height="300" src="https://gitee.com/dromara/free-fs/raw/master/.images/wx.png" width="250"/>
+<img alt="wx.png" height="300" src=".images/wx.png" width="250"/>
 
 - 微信群：
 
-<img alt="wx.png" height="300" src="https://gitee.com/dromara/free-fs/raw/master/.images/wx_group.png" width="250"/>
+<img alt="wx.png" height="300" src=".images/wx_group.png" width="250"/>
 
 - 微信公众号：
 
-<img alt="wp.png" src="https://gitee.com/dromara/free-fs/raw/master/.images/mp.png"/>
+<img alt="wp.png" src=".images/mp.png"/>
 
 ---
 
@@ -296,7 +293,7 @@ chore: 构建/工具链更新
 
 请给一个 ⭐️ 支持一下！
 
-<img alt="pay.png" height="300" src="https://gitee.com/dromara/free-fs/raw/master/.images/pay.png" width="250"/>
+<img alt="pay.png" height="300" src=".images/pay.png" width="250"/>
 
 <div align="center">
 

@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.yaml.snakeyaml.constructor.DuplicateKeyException;
 
 /**
@@ -180,6 +181,31 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理静态资源未找到异常
+     * 通常是浏览器请求 sw.js、manifest.json 等前端资源
+     * 这些请求来自浏览器缓存的 Service Worker 注册，可以安全忽略
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public Result<?> handleNoResourceFoundException(NoResourceFoundException e, HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        // 针对根路径 "/" 的特殊友好提示
+        if ("/".equals(requestURI)) {
+            return Result.error(HttpStatus.NOT_FOUND.value(),
+                    "后端服务启动成功！检测到您正在访问根路径，请注意：本系统采用前后端分离架构，" +
+                            "如需查看页面，请参考文档部署并运行前端工程。", null);
+        }
+
+        // 只对特定的前端资源请求使用 debug 级别日志，避免日志污染
+        if (requestURI.matches(".*(sw\\.js|manifest\\.json|robots\\.txt|favicon\\.ico)$")) {
+            log.debug("忽略前端资源请求: {}", requestURI);
+            return null;
+        }
+        // 其他资源未找到仍然记录为警告
+        log.warn("请求地址'{}',静态资源未找到", requestURI);
+        return Result.error(HttpStatus.NOT_FOUND.value(), "资源未找到", null);
+    }
+
+    /**
      * 处理客户端断开连接异常
      * 这种异常通常发生在用户刷新页面、快速切换文件、网络中断等场景
      * 不需要记录为错误日志
@@ -226,7 +252,7 @@ public class GlobalExceptionHandler {
         String message = e.getMessage();
 
         // 检查异常类型
-        if (className.contains("ClientAbortException") 
+        if (className.contains("ClientAbortException")
                 || className.contains("AsyncRequestNotUsableException")
                 || className.contains("EOFException")
                 || className.contains("SocketException")) {

@@ -64,10 +64,10 @@ public interface IStorageOperationService extends Closeable {
     /**
      * 重命名文件
      *
-     * @param objectKey
-     * @param newFileName
+     * @param objectKey     原始对象名
+     * @param destObjectKey 目标对象名
      */
-    void rename(String objectKey, String newFileName);
+    void rename(String objectKey, String destObjectKey);
 
     /**
      * 获取文件访问URL

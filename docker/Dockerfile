@@ -6,7 +6,7 @@ RUN sed -i 's@//.*archive.ubuntu.com@//mirrors.aliyun.com@g' /etc/apt/sources.li
     apt-get update && \
     export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y --no-install-recommends \
-        openjdk-17-jre \
+        openjdk-21-jre \
         tzdata \
         locales \
         xfonts-utils \
@@ -25,7 +25,7 @@ RUN sed -i 's@//.*archive.ubuntu.com@//mirrors.aliyun.com@g' /etc/apt/sources.li
 # 设置环境变量
 ENV LANG=zh_CN.UTF-8 \
     LC_ALL=zh_CN.UTF-8 \
-    JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+    JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 
 # 挂载点（LibreOffice 转换大文件时建议 /tmp 有足够空间）
 VOLUME /tmp

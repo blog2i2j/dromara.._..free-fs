@@ -4,6 +4,9 @@ import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.storage.plugin.core.utils.StorageUtils;
 import lombok.Builder;
 import lombok.Data;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Map;
 
@@ -243,14 +246,9 @@ public class StorageConfig {
             throw new StorageOperationException("Properties is empty, cannot convert to object");
         }
         try {
-            com.fasterxml.jackson.databind.ObjectMapper mapper =
-                    new com.fasterxml.jackson.databind.ObjectMapper();
-
-            mapper.configure(
-                    com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
-                    false
-            );
-
+            ObjectMapper mapper = JsonMapper.builder()
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                    .build();
             return mapper.convertValue(properties, targetClass);
         } catch (Exception e) {
             throw new StorageOperationException(

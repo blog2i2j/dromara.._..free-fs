@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * 用户收藏文件服务接口
  *
- * @Author: hao.ding@insentek.com
+ * @Author: xddcode
  * @Date: 2025/5/12 13:49
  */
 public interface FileUserFavoritesService extends IService<FileUserFavorites> {

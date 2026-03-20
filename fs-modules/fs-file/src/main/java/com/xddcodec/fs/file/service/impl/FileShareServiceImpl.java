@@ -31,9 +31,7 @@ import io.github.linpeilie.Converter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -122,12 +120,16 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
         if (StrUtil.isNotBlank(cmd.getShareName())) {
             share.setShareName(cmd.getShareName());
         } else {
-            FileInfo fileInfo = fileInfoService.getById(cmd.getFileIds().get(0));
+            FileInfo fileInfo = fileInfoService.getById(cmd.getFileIds().getFirst());
             // 默认取第一个文件名，如果是多个文件则显示第一个文件名+"等{数量}"文件
             if (cmd.getFileIds().size() > 1) {
-                share.setShareName(fileInfo.getDisplayName() + "等" + cmd.getFileIds().size() + "个文件");
+                if (fileInfo != null) {
+                    share.setShareName(fileInfo.getDisplayName() + "等" + cmd.getFileIds().size() + "个文件");
+                }
             } else {
-                share.setShareName(fileInfo.getDisplayName());
+                if (fileInfo != null) {
+                    share.setShareName(fileInfo.getDisplayName());
+                }
             }
         }
         if (cmd.getExpireType() == 4) {
@@ -298,7 +300,7 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
     /**
      * 记录分享访问日志
      *
-     * @param shareId
+     * @param shareId 分享ID
      */
     private void recordShareAccessLog(String shareId) {
         String ip = IpUtils.getIpAddr();
