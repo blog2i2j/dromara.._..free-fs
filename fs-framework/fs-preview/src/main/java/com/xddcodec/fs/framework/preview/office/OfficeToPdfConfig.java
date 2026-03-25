@@ -56,11 +56,6 @@ public class OfficeToPdfConfig {
     private String officeHome;
 
     /**
-     * 进程池大小
-     */
-    private Integer poolSize = 2;
-
-    /**
      * 任务执行超时（毫秒）
      */
     private Long taskExecutionTimeout = 120000L;

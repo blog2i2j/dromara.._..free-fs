@@ -7,6 +7,7 @@ import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
 import com.xddcodec.fs.framework.preview.config.FilePreviewConfig;
 import com.xddcodec.fs.framework.preview.core.PreviewStrategy;
 import com.xddcodec.fs.framework.preview.factory.PreviewStrategyManager;
+import com.xddcodec.fs.framework.preview.strategy.impl.archive.ArchiveUtil;
 import com.xddcodec.fs.storage.facade.StorageServiceFacade;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -139,28 +141,68 @@ public class FileStreamController {
     @GetMapping("/preview/archive/inner/{tempId}")
     public ResponseEntity<StreamingResponseBody> previewArchiveInner(@PathVariable String tempId) {
         log.info("获取压缩包内文件流: tempId={}", tempId);
-        
+
         byte[] fileContent = archiveFilePreviewService.getCachedInnerFile(tempId);
         if (fileContent == null) {
             log.warn("压缩包内文件缓存已过期或不存在: tempId={}", tempId);
             return ResponseEntity.notFound().build();
         }
 
+        String displayName = archiveFilePreviewService.getCachedInnerFileName(tempId);
+        if (displayName == null || displayName.isBlank()) {
+            displayName = "file.bin";
+        }
+
+        String suffix = ArchiveUtil.getExtension(displayName).toLowerCase(Locale.ROOT);
+        FileTypeEnum fileType = FileTypeEnum.fromFileName(displayName);
+        PreviewStrategy strategy = strategyManager.getStrategy(fileType);
+
         StreamingResponseBody stream = outputStream -> {
-            try (InputStream inputStream = new ByteArrayInputStream(fileContent)) {
-                copyStream(inputStream, outputStream);
+            try (InputStream sourceStream = new ByteArrayInputStream(fileContent);
+                 InputStream processedStream = strategy.processStream(sourceStream, suffix)) {
+                copyStream(processedStream, outputStream);
             } catch (IOException e) {
                 log.debug("压缩包内文件流传输中断: tempId={}", tempId);
             }
         };
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        headers.setContentLength(fileContent.length);
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, "inline");
-        headers.setCacheControl("no-cache");
-
+        HttpHeaders headers = buildArchiveInnerStreamHeaders(
+                strategy, displayName, suffix, fileContent.length, false);
         return ResponseEntity.ok().headers(headers).body(stream);
+    }
+
+    /**
+     * 与 {@link #buildHeaders} 逻辑对齐：需转换的类型（如 Word/PPT）不设置 Content-Length，响应 PDF。
+     */
+    private HttpHeaders buildArchiveInnerStreamHeaders(PreviewStrategy strategy, String displayName,
+            String originalSuffix, long sourceByteLength, boolean isRange) {
+        HttpHeaders headers = new HttpHeaders();
+
+        String responseExtension = strategy.getResponseExtension(originalSuffix);
+        String fileName = changeExtension(displayName, responseExtension);
+
+        if ("pdf".equalsIgnoreCase(responseExtension)) {
+            headers.setContentType(MediaType.APPLICATION_PDF);
+        } else {
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        }
+
+        if (isRange || !strategy.needConvert()) {
+            headers.setContentLength(sourceByteLength);
+        }
+
+        headers.set(HttpHeaders.CONTENT_DISPOSITION,
+                "inline; filename*=UTF-8''" + encodeFileName(fileName));
+
+        if (strategy.supportRange()) {
+            headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
+            headers.setCacheControl("public, max-age=604800");
+        } else {
+            headers.set(HttpHeaders.ACCEPT_RANGES, "none");
+            headers.setCacheControl("no-cache");
+        }
+
+        return headers;
     }
 
     /**

@@ -99,7 +99,7 @@ public class ArchivePreviewController {
         // redisRepository.del(tokenKey); // 如果需要一次性消费，取消注释
         
         try {
-            return archiveFilePreviewService.previewInnerFile(archiveFileId, innerPath, previewToken, model);
+            return archiveFilePreviewService.previewInnerFile(archiveFileId, innerPath, model);
         } catch (Exception e) {
             log.error("预览压缩包内文件失败: archiveFileId={}, innerPath={}", 
                     archiveFileId, innerPath, e);

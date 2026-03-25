@@ -80,8 +80,8 @@ public enum FileTypeEnum {
 
     // ==================== 压缩包 ====================
     ARCHIVE("archive", "压缩包", FileCategory.OTHER, Arrays.asList(
-            "zip", "rar", "7z", "tar",
-            "ZIP", "RAR", "7Z", "TAR"
+            "zip", "rar", "7z", "tar", "gzip",
+            "ZIP", "RAR", "7Z", "TAR", "GZIP "
     )),
 
     TIF("tif", "TIF", FileCategory.OTHER, Arrays.asList(

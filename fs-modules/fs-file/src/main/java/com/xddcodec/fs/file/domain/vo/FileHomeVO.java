@@ -12,10 +12,11 @@ public class FileHomeVO implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private Long usedStorage;
-    private Long fileCount;
-    private Long directoryCount;
-    private Long favoriteCount;
-    private Long shareCount;
+    private Double usedStorage;
+
+    private List<FileHomeUsedBytesVO> usedBytes;
+
     private List<FileVO> recentFiles;
+
+    private String unit;
 }

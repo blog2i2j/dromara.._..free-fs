@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
  */
 @Service
 @RequiredArgsConstructor
-public class PreviewService {
+public class    PreviewService {
     private final FileInfoService fileInfoService;
     private final PreviewStrategyManager strategyManager;
     private final FilePreviewConfig previewConfig;
