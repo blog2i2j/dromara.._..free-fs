@@ -60,7 +60,7 @@ public class PreviewInterceptor implements HandlerInterceptor {
         // 处理压缩包内文件流：/api/file/stream/preview/archive/inner/{tempId}
         else if (uri.contains("/archive/inner/")) {
             String tempId = extractFileId(uri);
-            // 对于临时文件流，token 格式为 {originalToken}:stream，存储的是 tempId
+            // 独立签发的流 token，Redis 值为对应的 tempId
             if (tempId != null && tempId.equals(cacheValue)) {
                 return true;
             }

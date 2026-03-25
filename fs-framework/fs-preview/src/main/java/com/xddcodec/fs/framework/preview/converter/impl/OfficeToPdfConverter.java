@@ -2,6 +2,7 @@ package com.xddcodec.fs.framework.preview.converter.impl;
 
 import com.xddcodec.fs.framework.preview.converter.IConverter;
 import com.xddcodec.fs.framework.preview.office.OfficeToPdfConfig;
+import com.xddcodec.fs.framework.preview.queue.OfficeTaskQueueHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jodconverter.core.DocumentConverter;
@@ -16,6 +17,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
+import java.util.concurrent.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -23,9 +25,27 @@ public class OfficeToPdfConverter implements IConverter {
 
     private final OfficeManager officeManager;
     private final OfficeToPdfConfig config;
+    private final OfficeTaskQueueHandler queueHandler;
+
+    @Override
+    public String getTargetExtension() {
+        return "pdf";
+    }
 
     @Override
     public InputStream convert(InputStream sourceStream, String sourceExtension) {
+
+        return queueHandler.submitAndWait(sourceStream, sourceExtension, this::doActualConvert);
+    }
+
+    /**
+     * 真正的转换逻辑
+     *
+     * @param sourceStream    源文件输入流
+     * @param sourceExtension 源文件扩展名
+     * @return PDF 格式的输出流
+     */
+    private InputStream doActualConvert(InputStream sourceStream, String sourceExtension) {
         Path tempInputFile = null;
         Path tempOutputFile = null;
 
@@ -64,11 +84,6 @@ public class OfficeToPdfConverter implements IConverter {
         } finally {
             cleanupTempFiles(tempInputFile, tempOutputFile);
         }
-    }
-
-    @Override
-    public String getTargetExtension() {
-        return "pdf";
     }
 
     private Path createTempFile(String baseName, String extension) throws IOException {

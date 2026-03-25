@@ -80,7 +80,6 @@ fs:
       # Windows: C:/Program Files/LibreOffice
       # Mac: /Applications/LibreOffice.app/Contents
 #      office-home: C:/Program Files/LibreOffice
-      pool-size: 2
       task-execution-timeout: 120000
       task-queue-timeout: 30000
       max-tasks-per-process: 200

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.ui.Model;
 
 /**
- * ✅ PDF预览策略
+ * PDF预览策略
  */
 @Slf4j
 @Component

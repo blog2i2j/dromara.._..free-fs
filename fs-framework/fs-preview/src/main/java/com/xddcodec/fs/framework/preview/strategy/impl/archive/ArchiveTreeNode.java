@@ -25,11 +25,6 @@ public class ArchiveTreeNode {
     private Boolean isDirectory;
 
     /**
-     * 后端计算好的图标类型（code, text, image 等）
-     */
-    private String fileType;
-
-    /**
      * 子节点列表（只有目录才有）
      */
     private List<ArchiveTreeNode> children;

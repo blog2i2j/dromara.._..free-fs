@@ -10,10 +10,7 @@ import org.springframework.ui.Model;
 import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URL;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Component
@@ -33,12 +30,10 @@ public class ArchivePreviewStrategy extends AbstractPreviewStrategy {
     protected void fillSpecificModel(PreviewContext context, Model model) {
         try (InputStream inputStream = new BufferedInputStream(URI.create(context.getStreamUrl()).toURL().openStream())) {
 
-            List<ArchiveFileInfo> files = ArchiveUtil.parseArchive(inputStream, context.getFileName());
+            List<ArchiveFileInfo> files = ArchiveUtil.parseArchive(inputStream);
             List<ArchiveTreeNode> treeNodes = ArchiveUtil.convertToTree(files);
-            String archiveType = ArchiveUtil.detectArchiveType(context.getFileName());
 
             model.addAttribute("archiveTree", treeNodes);
-            model.addAttribute("archiveType", archiveType);
             model.addAttribute("archiveFileId", context.getFileId());
 
         } catch (Exception e) {

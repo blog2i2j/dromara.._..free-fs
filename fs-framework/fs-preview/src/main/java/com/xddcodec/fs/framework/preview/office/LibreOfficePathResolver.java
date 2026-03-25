@@ -121,9 +121,8 @@ public class LibreOfficePathResolver {
             
             log.debug("项目工作目录: {}", userDir);
             
-            // 拼接 LibreOfficePortable 路径
-            String embeddedPath = userDir + File.separator + "LibreOfficePortable" 
-                    + File.separator + "App" + File.separator + "libreoffice";
+            // 拼接 LibreOffice 路径
+            String embeddedPath = userDir + File.separator + "LibreOffice";
             log.debug("检查内置路径: {}", embeddedPath);
             
             File embeddedDir = new File(embeddedPath);
@@ -214,9 +213,9 @@ public class LibreOfficePathResolver {
                 // Windows 环境下优先使用项目根目录下的 LibreOfficePortable
                 String embeddedPath = getEmbeddedLibreOfficePath();
                 if (embeddedPath != null) {
-                    log.info("✓ 使用项目内置的 LibreOfficePortable (便携版)");
+                    log.info("✓ 使用项目内置的 LibreOffice");
                     log.info("  路径: {}", embeddedPath);
-                    log.info("  来源: 项目根目录/LibreOfficePortable");
+                    log.info("  来源: 项目根目录/LibreOffice");
                     return embeddedPath;
                 }
                 // 回退到默认安装路径

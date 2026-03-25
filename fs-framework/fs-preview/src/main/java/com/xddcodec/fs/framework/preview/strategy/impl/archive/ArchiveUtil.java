@@ -1,15 +1,14 @@
 package com.xddcodec.fs.framework.preview.strategy.impl.archive;
 
-import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.apache.commons.compress.archivers.ArchiveInputStream;
-import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
-import org.apache.commons.compress.archivers.sevenz.SevenZFile;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
+import net.sf.sevenzipjbinding.IInArchive;
+import net.sf.sevenzipjbinding.SevenZip;
+import net.sf.sevenzipjbinding.impl.RandomAccessFileInStream;
+import net.sf.sevenzipjbinding.simple.ISimpleInArchive;
+import net.sf.sevenzipjbinding.simple.ISimpleInArchiveItem;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
@@ -17,130 +16,123 @@ import java.util.*;
 @Slf4j
 public class ArchiveUtil {
 
-    public static List<ArchiveFileInfo> parseArchive(InputStream inputStream, String fileName) throws Exception {
-        String suffix = getExtension(fileName).toLowerCase();
-
-        // 7z 处理
-        if ("7z".equals(suffix)) {
-            return parse7z(inputStream);
-        }
-
-        // ZIP 和 TAR 处理
-        return parseStreamArchive(inputStream, suffix);
-    }
-
-    private static List<ArchiveFileInfo> parseStreamArchive(InputStream is, String suffix) throws Exception {
+    public static List<ArchiveFileInfo> parseArchive(InputStream inputStream) throws Exception {
         List<ArchiveFileInfo> fileInfos = new ArrayList<>();
-        try (ArchiveInputStream<? extends ArchiveEntry> ais = createInputStreamBySuffix(is, suffix)) {
-            ArchiveEntry entry;
-            while ((entry = ais.getNextEntry()) != null) {
-                fileInfos.add(buildFileInfo(entry.getName(), entry.getSize(),
-                        entry.getLastModifiedDate(), entry.isDirectory()));
-            }
-        }
-        return fileInfos;
-    }
+        java.nio.file.Path tempPath = Files.createTempFile("preview_", ".tmp");
 
-    private static ArchiveInputStream<? extends ArchiveEntry> createInputStreamBySuffix(InputStream is, String suffix) {
-        return switch (suffix) {
-            case "zip" -> new ZipArchiveInputStream(is);
-            case "tar" -> new TarArchiveInputStream(is);
-            default -> throw new IllegalArgumentException("不支持的压缩流格式: " + suffix);
-        };
-    }
-
-    private static List<ArchiveFileInfo> parse7z(InputStream is) throws Exception {
-        List<ArchiveFileInfo> fileInfos = new ArrayList<>();
-        // 7z 必须随机访问，创建临时文件
-        java.nio.file.Path tempPath = null;
         try {
-            tempPath = Files.createTempFile("preview_7z_", ".tmp");
-            Files.copy(is, tempPath, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(inputStream, tempPath, StandardCopyOption.REPLACE_EXISTING);
 
-            // 使用推荐的 Builder 模式替代弃用的构造函数
-            try (SevenZFile sevenZFile = SevenZFile.builder()
-                    .setFile(tempPath.toFile())
-                    .get()) {
+            try (RandomAccessFile raf = new RandomAccessFile(tempPath.toFile(), "r");
+                 IInArchive inArchive = SevenZip.openInArchive(null, new RandomAccessFileInStream(raf))) {
 
-                SevenZArchiveEntry entry;
-                while ((entry = sevenZFile.getNextEntry()) != null) {
-                    fileInfos.add(buildFileInfo(entry.getName(), entry.getSize(),
-                            entry.getLastModifiedDate(), entry.isDirectory()));
+                ISimpleInArchive simpleInArchive = inArchive.getSimpleInterface();
+                for (ISimpleInArchiveItem item : simpleInArchive.getArchiveItems()) {
+                    String rawPath = item.getPath();
+                    String decodedPath = fixFileNameEncoding(rawPath);
+                    fileInfos.add(buildFileInfo(
+                            decodedPath,
+                            item.getSize() == null ? 0L : item.getSize(),
+                            item.isFolder()
+                    ));
                 }
             }
         } finally {
-            if (tempPath != null) {
-                try {
-                    Files.deleteIfExists(tempPath);
-                } catch (IOException e) {
-                    log.warn("删除临时文件失败: {}", tempPath, e);
-                }
-            }
+            Files.deleteIfExists(tempPath);
         }
         return fileInfos;
     }
 
-    private static ArchiveFileInfo buildFileInfo(String fullPath, long size, Date modifyTime, boolean isDir) {
+    /**
+     * 修复文件名乱码的核心逻辑
+     */
+    public static String fixFileNameEncoding(String path) {
+        if (path == null || path.isEmpty()) return "";
+
+        // 如果字符串包含连续的问号，说明 Java 在用默认编码解析 JNI 传回的字节时失败了
+        if (path.contains("??")) {
+            try {
+                // 尝试将路径退回到原始字节流（通常底层是 ISO_8859_1 强制转的），然后用 GBK 重新解码
+                // 这种方式能解决 90% 以上 Windows 环境压缩包的乱码问题
+                byte[] bytes = path.getBytes(StandardCharsets.ISO_8859_1);
+                String gbkStr = new String(bytes, "GBK");
+
+                // 如果重新解码后不再包含大量问号，说明修复成功
+                if (!gbkStr.contains("??")) {
+                    return gbkStr;
+                }
+            } catch (Exception e) {
+                log.debug("尝试 GBK 解码失败: {}", path);
+            }
+        }
+        return path;
+    }
+
+    private static ArchiveFileInfo buildFileInfo(String fullPath, long size, boolean isDir) {
         String name = getFileNameFromPath(fullPath);
         return ArchiveFileInfo.builder()
                 .name(name)
                 .path(fullPath)
                 .isDirectory(isDir)
-                .size(size < 0 ? 0L : size)
-                .modifyTime(modifyTime != null ? modifyTime.getTime() : 0L)
                 .extension(isDir ? "" : getExtension(name))
                 .build();
     }
 
-    private static String getFileNameFromPath(String path) {
+    /**
+     * 将反斜杠统一为正斜杠，并去掉首尾斜杠，用于压缩包内路径比对（与前端 innerPath 对齐）
+     */
+    public static String normalizePath(String path) {
+        if (path == null) {
+            return "";
+        }
+        String p = path.replace("\\", "/");
+        if (p.startsWith("/")) {
+            p = p.substring(1);
+        }
+        if (p.endsWith("/")) {
+            p = p.substring(0, p.length() - 1);
+        }
+        return p;
+    }
+
+    /**
+     * 压缩包内预览路径是否安全：禁止路径段为 {@code ..}、盘符绝对路径等；不把 {@code ..} 当作子串判断，避免误伤 {@code foo..txt} 等合法名。
+     */
+    public static boolean isSafeArchiveInnerPath(String path) {
+        if (path == null || path.isBlank()) {
+            return false;
+        }
+        String p = path.replace("\\", "/");
+        if (p.contains("://")) {
+            return false;
+        }
+        for (String segment : p.split("/")) {
+            if ("..".equals(segment)) {
+                return false;
+            }
+        }
+        String tail = p.startsWith("/") ? p.substring(1) : p;
+        if (tail.length() >= 2 && tail.charAt(1) == ':') {
+            return false;
+        }
+        return true;
+    }
+
+    public static String getFileNameFromPath(String path) {
         if (path == null || path.isEmpty()) {
             return "";
         }
-        if (path.endsWith("/") || path.endsWith("\\")) {
-            path = path.substring(0, path.length() - 1);
-        }
-        int lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+        path = normalizePath(path);
+        int lastSlash = path.lastIndexOf('/');
         return lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
     }
 
-    private static String getExtension(String fileName) {
+    public static String getExtension(String fileName) {
         if (fileName == null || fileName.isEmpty()) {
             return "";
         }
         int lastDot = fileName.lastIndexOf('.');
         return (lastDot >= 0) ? fileName.substring(lastDot + 1) : "";
-    }
-
-    /**
-     * 检测压缩包类型
-     */
-    public static String detectArchiveType(String fileName) {
-        if (fileName == null || fileName.isEmpty()) {
-            return "UNKNOWN";
-        }
-        String extension = getExtension(fileName).toUpperCase();
-        return switch (extension) {
-            case "ZIP" -> "ZIP";
-            case "TAR" -> "TAR";
-            case "7Z" -> "7Z";
-            case "RAR" -> "RAR";
-            case "GZ" -> "GZIP";
-            case "BZ2" -> "BZIP2";
-            default -> extension.isEmpty() ? "UNKNOWN" : extension;
-        };
-    }
-
-    public static Map<String, Object> getArchiveStats(List<ArchiveFileInfo> files) {
-        long fileCount = files.stream().filter(f -> !f.getIsDirectory()).count();
-        long folderCount = files.stream().filter(ArchiveFileInfo::getIsDirectory).count();
-        long totalSize = files.stream().mapToLong(f -> f.getSize() == null ? 0 : f.getSize()).sum();
-
-        return Map.of(
-                "fileCount", fileCount,
-                "folderCount", folderCount,
-                "totalSize", totalSize,
-                "totalCount", files.size()
-        );
     }
 
     /**
@@ -171,15 +163,11 @@ public class ArchiveUtil {
             // 获取当前节点的名称（最后一级）
             String nodeName = isDir ? getFolderNameOnly(fullPath) : file.getName();
 
-            // 获取后端计算好的 fileType
-            String typeCode = isDir ? "dir" : FileTypeEnum.fromSuffix(file.getExtension()).getCode();
-
             // 创建当前 TreeNode
             ArchiveTreeNode currentNode = ArchiveTreeNode.builder()
                     .name(nodeName)
                     .fullPath(normalizedPath)
                     .isDirectory(isDir)
-                    .fileType(typeCode)
                     .build();
 
             // 寻找父节点
@@ -199,11 +187,11 @@ public class ArchiveUtil {
                 folderMap.put(normalizedPath, currentNode);
             }
         }
-        
+
         return roots;
     }
 
-    // 辅助：获取目录本身的名字 (如 "a/b/" -> "b")
+    // 获取目录本身的名字 (如 "a/b/" -> "b")
     private static String getFolderNameOnly(String path) {
         if (path.endsWith("/") || path.endsWith("\\")) {
             path = path.substring(0, path.length() - 1);
@@ -212,7 +200,7 @@ public class ArchiveUtil {
         return lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
     }
 
-    // 辅助：获取父级路径 (如 "a/b/c.txt" -> "a/b", "a/b/" -> "a")
+    // 获取父级路径 (如 "a/b/c.txt" -> "a/b", "a/b/" -> "a")
     private static String getParentPath(String path) {
         // 统一处理掉末尾的斜杠
         if (path.endsWith("/") || path.endsWith("\\")) {
