@@ -1,12 +1,15 @@
 package com.xddcodec.fs.file.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.FileShare;
+import com.xddcodec.fs.file.domain.FileShareItem;
 import com.xddcodec.fs.file.domain.dto.CreateFileShareAccessRecordCmd;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
 import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
@@ -21,6 +24,7 @@ import com.xddcodec.fs.file.mapper.FileShareMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.file.service.FileShareItemService;
 import com.xddcodec.fs.file.service.FileShareService;
+import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.utils.Ip2RegionUtils;
 import com.xddcodec.fs.framework.common.utils.IpUtils;
@@ -65,8 +69,13 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
     private static final String CACHE_NAME = "share";
 
     @Override
-    public List<FileShareVO> getList(FileShareQry qry) {
+    public PageResult<FileShareVO> getPages(FileShareQry qry) {
         String userId = StpUtil.getLoginIdAsString();
+        int page = qry.getPage() == null ? 1 : qry.getPage();
+        int pageSize = qry.getPageSize() == null ? 10 : qry.getPageSize();
+
+        Page<FileShare> p = new Page<>(page, pageSize);
+
         QueryWrapper wrapper = new QueryWrapper();
         wrapper.where(FILE_SHARE.USER_ID.eq(userId));
 
@@ -81,8 +90,11 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
             boolean isAsc = "ASC".equalsIgnoreCase(qry.getOrderDirection());
             wrapper.orderBy(orderBy, isAsc);
         }
-        List<FileShare> fileShares = this.list(wrapper);
-        return converter.convert(fileShares, FileShareVO.class);
+        this.page(p, wrapper);
+        List<FileShare> fileShares = p.getRecords();
+        List<FileShareVO> fileShareVOS = converter.convert(fileShares, FileShareVO.class);
+
+        return PageResult.success(fileShareVOS, p.getTotalRow());
     }
 
     @Override
@@ -192,16 +204,20 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void cancelShares(List<String> ids) {
-        for (String id : ids) {
-            FileShare share = this.getById(id);
-            if (share == null) {
-                continue;
-            }
-            if (share.getUserId().equals(StpUtil.getLoginIdAsString())) {
-                this.removeById(id);
-                fileShareItemService.removeByShareId(id);
-            }
+        if (CollUtil.isEmpty(ids)) {
+            return;
         }
+        this.removeByIds(ids);
+        fileShareItemService.remove(new QueryWrapper().in(FileShareItem::getShareId, ids));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelAllShares() {
+        String userId = StpUtil.getLoginIdAsString();
+        List<FileShare> shareIds = this.list(new QueryWrapper().where(FILE_SHARE.USER_ID.eq(userId)));
+        List<String> shareIdList = shareIds.stream().map(FileShare::getId).toList();
+        this.cancelShares(shareIdList);
     }
 
     @Override
@@ -251,12 +267,12 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
         if (fileShare == null) {
             throw new BusinessException("该分享不存在或已删除");
         }
-        if (StringUtils.isNotEmpty(parentId)) {
-            // 若有父文件ID参数, 则需要查询子数据集
-            FileQry fileQry = new FileQry();
-            fileQry.setParentId(parentId);
-            return fileInfoService.getList(fileQry);
-        }
+//        if (StringUtils.isNotEmpty(parentId)) {
+//            // 若有父文件ID参数, 则需要查询子数据集
+//            FileQry fileQry = new FileQry();
+//            fileQry.setParentId(parentId);
+//            return fileInfoService.getList(fileQry);
+//        }
         // 获取分享明细
         List<String> shareFileIds = fileShareItemService.getShareFileIds(shareId);
 

@@ -26,7 +26,8 @@ CREATE TABLE `file_info`  (
   `last_access_time` datetime NULL DEFAULT NULL COMMENT '最后访问时间',
   `is_deleted` tinyint(1) NULL DEFAULT NULL COMMENT '软删除标记，回收站标识0：未删除 1：已删除',
   `deleted_time` datetime NULL DEFAULT NULL COMMENT '删除时间',
-  PRIMARY KEY (`id`) USING BTREE
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_recycle_query`(`user_id` ASC, `storage_platform_setting_id` ASC, `is_deleted` ASC, `parent_id` ASC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '文件资源表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------

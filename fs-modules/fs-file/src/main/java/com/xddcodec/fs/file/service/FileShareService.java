@@ -9,6 +9,7 @@ import com.xddcodec.fs.file.domain.vo.FileDownloadVO;
 import com.xddcodec.fs.file.domain.vo.FileShareThinVO;
 import com.xddcodec.fs.file.domain.vo.FileShareVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
+import com.xddcodec.fs.framework.common.domain.PageResult;
 
 import java.util.List;
 
@@ -26,7 +27,7 @@ public interface FileShareService extends IService<FileShare> {
      * @param qry
      * @return
      */
-    List<FileShareVO> getList(FileShareQry qry);
+    PageResult<FileShareVO> getPages(FileShareQry qry);
 
     /**
      * 获取分享详情
@@ -49,6 +50,11 @@ public interface FileShareService extends IService<FileShare> {
      * @param ids 分享ID集合
      */
     void cancelShares(List<String> ids);
+
+    /**
+     * 取消所有分享
+     */
+    void cancelAllShares();
 
     /**
      * 校验提取码

@@ -11,6 +11,7 @@ import com.xddcodec.fs.file.domain.vo.FileHomeVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.service.FileHomeService;
 import com.xddcodec.fs.file.service.FileInfoService;
+import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -44,8 +45,8 @@ public class FileHomeServiceImpl implements FileHomeService {
         //查询用户最近使用的文件
         FileQry fileQry = new FileQry();
         fileQry.setIsRecents(Boolean.TRUE);
-        List<FileVO> recentFiles = fileInfoService.getList(fileQry);
-        fileHomeVO.setRecentFiles(recentFiles);
+        PageResult<FileVO> recentFiles = fileInfoService.getList(fileQry);
+        fileHomeVO.setRecentFiles(recentFiles.getData().getRecords());
 
         List<FileHomeUsedBytesVO> usedBytes = getFileHomeUsedBytes(qry);
         fileHomeVO.setUsedBytes(usedBytes);
