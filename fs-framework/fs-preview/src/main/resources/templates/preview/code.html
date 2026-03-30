@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title th:text="${fileName}">代码预览与编辑</title>
+    <title th:text="${fileName}">代码预览</title>
     <style>
         :root { --color-border: rgba(255, 255, 255, 0.1); }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,20 +12,17 @@
             height: 48px; display: flex; align-items: center; justify-content: space-between;
             padding: 0 20px; background: #252526; border-bottom: 1px solid var(--color-border);
         }
-        .header-right { display: flex; gap: 8px; }
         .icon-btn {
             cursor: pointer; background: #333; border: none; color: #ccc;
             padding: 4px 12px; border-radius: 4px; font-size: 13px;
         }
         .icon-btn:hover { background: #444; color: white; }
-        .icon-btn.active { background: #165dff; color: white; }
 
         /* 编辑器容器 */
-        #editor-main, #diff-container {
+        #editor-main {
             height: calc(100vh - 48px);
             width: 100%;
         }
-        #diff-container { display: none; } /* 默认隐藏对比视图 */
 
         .loading-mask {
             position: absolute; inset: 48px 0 0 0; background: #1e1e1e;
@@ -43,16 +40,12 @@
         <span th:text="${fileName}">file.java</span>
     </div>
     <div class="header-right">
-        <button id="compare-btn" class="icon-btn" onclick="toggleDiffMode()">查看差异</button>
-        <button class="icon-btn" style="background: #28a745;" onclick="saveContent()">保存修改</button>
         <button class="icon-btn" onclick="window.close()">✕</button>
     </div>
 </div>
 
 <div id="loading" class="loading-mask">加载中...</div>
-
 <div id="editor-main"></div>
-<div id="diff-container"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 
@@ -60,10 +53,8 @@
     const URL_VAL = document.getElementById('streamUrl').value;
     const LANG_VAL = document.getElementById('fileLanguage').value || 'javascript';
 
-    let editorInstance = null;   // 普通编辑器
-    let diffEditorInstance = null; // 对比编辑器
-    let originalContent = "";    // 缓存最初的内容
-    let isDiffMode = false;      // 状态标记
+    let editorInstance = null;
+    let originalContent = "";
 
     require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
 
@@ -72,13 +63,15 @@
             const response = await fetch(URL_VAL);
             originalContent = await response.text();
 
-            // 1. 初始化普通编辑器
+            // 初始化只读代码预览编辑器
             editorInstance = monaco.editor.create(document.getElementById('editor-main'), {
                 value: originalContent,
                 language: LANG_VAL,
                 theme: 'vs-dark',
                 automaticLayout: true,
-                minimap: { enabled: false }
+                minimap: { enabled: false },
+                readOnly: true,  // 只读模式（预览专用）
+                domReadOnly: true
             });
 
             document.getElementById('loading').style.display = 'none';
@@ -86,60 +79,6 @@
             document.getElementById('loading').innerText = "加载失败";
         }
     });
-
-    // 切换对比模式
-    function toggleDiffMode() {
-        const btn = document.getElementById('compare-btn');
-        const editorDiv = document.getElementById('editor-main');
-        const diffDiv = document.getElementById('diff-container');
-
-        if (!isDiffMode) {
-            // --- 进入对比模式 ---
-            isDiffMode = true;
-            btn.innerText = "返回编辑";
-            btn.classList.add('active');
-
-            editorDiv.style.display = 'none';
-            diffDiv.style.display = 'block';
-
-            // 创建或更新 DiffEditor
-            if (!diffEditorInstance) {
-                diffEditorInstance = monaco.editor.createDiffEditor(diffDiv, {
-                    theme: 'vs-dark',
-                    automaticLayout: true,
-                    readOnly: true, // 对比视图设为只读
-                    renderSideBySide: true
-                });
-            }
-
-            // 设置对比模型
-            const originalModel = monaco.editor.createModel(originalContent, LANG_VAL);
-            const modifiedModel = monaco.editor.createModel(editorInstance.getValue(), LANG_VAL);
-
-            diffEditorInstance.setModel({
-                original: originalModel,
-                modified: modifiedModel
-            });
-        } else {
-            // --- 返回普通编辑模式 ---
-            isDiffMode = false;
-            btn.innerText = "查看差异";
-            btn.classList.remove('active');
-
-            // 同步差异视图里的修改（如果有）到普通编辑器
-            // 如果你设置了 diffEditorInstance 的 modified 为只读，这一步可以省略
-
-            diffDiv.style.display = 'none';
-            editorDiv.style.display = 'block';
-        }
-    }
-
-    function saveContent() {
-        // 无论在什么模式，都从原本的 editorInstance 取最新值
-        const currentCode = editorInstance.getValue();
-        console.log("最终提交内容:", currentCode);
-        alert("保存成功，内容见控制台");
-    }
 </script>
 
 </body>
