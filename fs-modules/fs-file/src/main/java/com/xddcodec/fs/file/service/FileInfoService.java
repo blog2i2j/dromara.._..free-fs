@@ -8,6 +8,7 @@ import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.mybatisflex.core.service.IService;
 import com.xddcodec.fs.file.domain.vo.FileDetailVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
+import com.xddcodec.fs.framework.common.domain.PageResult;
 
 import java.io.InputStream;
 import java.util.List;
@@ -100,7 +101,7 @@ public interface FileInfoService extends IService<FileInfo> {
      * @param qry 查询参数（包含关键词、文件类型、分页参数等）
      * @return 分页结果
      */
-    List<FileVO> getList(FileQry qry);
+    PageResult<FileVO> getList(FileQry qry);
 
     /**
      * 计算已使用的存储空间

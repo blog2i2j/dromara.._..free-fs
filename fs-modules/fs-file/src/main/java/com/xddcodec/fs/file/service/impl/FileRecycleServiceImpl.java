@@ -3,13 +3,17 @@ package com.xddcodec.fs.file.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.update.UpdateChain;
 import com.xddcodec.fs.file.domain.FileInfo;
+import com.xddcodec.fs.file.domain.qry.FileRecycleQry;
+import com.xddcodec.fs.file.domain.table.FileInfoTableDef;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.file.service.FileRecycleService;
 import com.xddcodec.fs.file.service.FileUserFavoritesService;
+import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.storage.facade.StorageServiceFacade;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
@@ -26,6 +30,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static com.mybatisflex.core.query.QueryMethods.notExists;
 import static com.xddcodec.fs.file.domain.table.FileInfoTableDef.FILE_INFO;
 
 /**
@@ -48,78 +53,115 @@ public class FileRecycleServiceImpl implements FileRecycleService {
     private final StorageServiceFacade storageServiceFacade;
 
     @Override
-    public List<FileRecycleVO> getRecycles(String keyword) {
+    public PageResult<FileRecycleVO> getRecyclePages(FileRecycleQry qry) {
         String userId = StpUtil.getLoginIdAsString();
-        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
+        String configId = StoragePlatformContextHolder.getConfigId();
+        int pageNum = qry.getPage() == null ? 1 : qry.getPage();
+        int pageSize = qry.getPageSize() == null ? 10 : qry.getPageSize();
 
-        // 先查询所有已删除的文件
-        QueryWrapper wrapper = new QueryWrapper();
-        wrapper.where(FILE_INFO.USER_ID.eq(userId))
-                .and(FILE_INFO.IS_DELETED.eq(true))
-                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
+        FileInfoTableDef t1 = FILE_INFO.as("t1");
+        FileInfoTableDef t2 = FILE_INFO.as("t2");
 
-        if (StrUtil.isNotBlank(keyword)) {
-            keyword = "%" + keyword.trim() + "%";
-            wrapper.and(
-                    FILE_INFO.ORIGINAL_NAME.like(keyword)
-                            .or(FILE_INFO.DISPLAY_NAME.like(keyword))
+        QueryWrapper queryWrapper = QueryWrapper.create()
+                .select(t1.ALL_COLUMNS)
+                .from(t1)
+                .where(t1.USER_ID.eq(userId))
+                .and(t1.STORAGE_PLATFORM_SETTING_ID.eq(configId))
+                .and(t1.IS_DELETED.eq(true));
+
+        if (StrUtil.isNotBlank(qry.getKeyword())) {
+            String keyword = qry.getKeyword().trim();
+            queryWrapper.and(
+                    t1.ORIGINAL_NAME.like(keyword)
+                            .or(t1.DISPLAY_NAME.like(keyword))
+            );
+        } else {
+            queryWrapper.and(
+                    t1.PARENT_ID.isNull()
+                            .or(
+                                    notExists(
+                                            QueryWrapper.create()
+                                                    .select(t2.ID)
+                                                    .from(t2)
+                                                    .where(t2.ID.eq(t1.PARENT_ID))
+                                                    .and(t2.IS_DELETED.eq(true))
+                                    )
+                            )
             );
         }
 
-        wrapper.orderBy(FILE_INFO.DELETED_TIME.desc());
+        queryWrapper.orderBy(FILE_INFO.IS_DIR.desc())
+                .orderBy(FILE_INFO.UPDATE_TIME.desc());
 
-        List<FileInfo> allDeletedFiles = fileInfoService.list(wrapper);
+        Page<FileInfo> resultPage = fileInfoService.page(new Page<>(pageNum, pageSize), queryWrapper);
 
-        if (CollUtil.isEmpty(allDeletedFiles)) {
-            return Collections.emptyList();
-        }
-
-        // 构建已删除文件的ID集合
-        Set<String> deletedFileIds = allDeletedFiles.stream()
-                .map(FileInfo::getId)
-                .collect(Collectors.toSet());
-
-        // 过滤出顶层删除项（父目录为空或父目录未被删除）
-        List<FileInfo> topLevelDeletedFiles = allDeletedFiles.stream()
-                .filter(file -> {
-                    String parentId = file.getParentId();
-                    // 父目录为空，或者父目录未在已删除列表中
-                    return StrUtil.isBlank(parentId) || !deletedFileIds.contains(parentId);
-                })
-                .collect(Collectors.toList());
-
-        return converter.convert(topLevelDeletedFiles, FileRecycleVO.class);
+        List<FileRecycleVO> voList = converter.convert(resultPage.getRecords(), FileRecycleVO.class);
+        return PageResult.success(voList, resultPage.getTotalRow());
     }
 
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void restoreFiles(List<String> fileIds) {
-        if (CollUtil.isEmpty(fileIds)) {
-            return;
-        }
-
+        if (CollUtil.isEmpty(fileIds)) return;
         String userId = StpUtil.getLoginIdAsString();
 
-        Set<String> allFileIds = collectFileIdsRecursively(
+        Set<String> allIdsToRestore = collectFileIdsRecursively(
                 fileIds,
                 userId,
-                wrapper -> wrapper.and(FILE_INFO.IS_DELETED.eq(true)) // 只收集已删除的
+                wrapper -> wrapper.and(FILE_INFO.IS_DELETED.eq(true))
         );
 
-        if (CollUtil.isEmpty(allFileIds)) {
+        Set<String> parentIdsInRecycle = collectParentIdsInRecycle(fileIds, userId);
+        allIdsToRestore.addAll(parentIdsInRecycle);
+
+        if (CollUtil.isEmpty(allIdsToRestore)) {
             throw new BusinessException("未找到要恢复的文件或文件夹");
         }
 
-        // 批量恢复
         UpdateChain.of(FileInfo.class)
                 .set(FileInfo::getIsDeleted, false)
                 .set(FileInfo::getDeletedTime, null)
-                .where(FILE_INFO.ID.in(allFileIds))
+                .where(FILE_INFO.ID.in(allIdsToRestore))
                 .and(FILE_INFO.USER_ID.eq(userId))
                 .update();
 
-        log.info("用户 {} 恢复文件/文件夹，共 {} 项", userId, allFileIds.size());
+        log.info("用户 {} 恢复文件/文件夹，共 {} 项（含向下级联与向上路径修复）", userId, allIdsToRestore.size());
+    }
+
+    /**
+     * 向上递归收集：找出这些文件在回收站中的所有祖先文件夹
+     */
+    private Set<String> collectParentIdsInRecycle(List<String> currentIds, String userId) {
+        Set<String> allParentIds = new HashSet<>();
+        List<String> runnerIds = new ArrayList<>(currentIds);
+
+        while (CollUtil.isNotEmpty(runnerIds)) {
+            // 1. 查出这些文件的 parentId (且 parentId 不为空)
+            List<String> pIds = fileInfoService.queryChain()
+                    .select(FILE_INFO.PARENT_ID)
+                    .where(FILE_INFO.ID.in(runnerIds))
+                    .and(FILE_INFO.PARENT_ID.isNotNull())
+                    .and(FILE_INFO.USER_ID.eq(userId))
+                    .listAs(String.class)
+                    .stream().filter(StrUtil::isNotBlank).distinct().collect(Collectors.toList());
+
+            if (CollUtil.isEmpty(pIds)) break;
+
+            // 2. 看看这些 parentId 中，哪些还在回收站里 (is_deleted = true)
+            List<String> deletedParents = fileInfoService.queryChain()
+                    .select(FILE_INFO.ID)
+                    .where(FILE_INFO.ID.in(pIds))
+                    .and(FILE_INFO.IS_DELETED.eq(true))
+                    .listAs(String.class);
+
+            if (CollUtil.isEmpty(deletedParents)) break;
+
+            // 3. 收集并继续往上找
+            allParentIds.addAll(deletedParents);
+            runnerIds = deletedParents;
+        }
+        return allParentIds;
     }
 
     @Override
@@ -191,35 +233,26 @@ public class FileRecycleServiceImpl implements FileRecycleService {
     @Override
     public void clearRecycles() {
         String userId = StpUtil.getLoginIdAsString();
-        String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
+        String configId = StoragePlatformContextHolder.getConfigId();
 
-        // 查询所有已删除的文件
-        List<FileInfo> allDeletedFiles = fileInfoService.list(new QueryWrapper()
-                .where(FILE_INFO.USER_ID.eq(userId))
-                .and(FILE_INFO.IS_DELETED.eq(true))
-                .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
-        );
+        FileInfoTableDef t1 = FILE_INFO.as("t1");
+        FileInfoTableDef t2 = FILE_INFO.as("t2");
 
-        if (CollUtil.isEmpty(allDeletedFiles)) {
-            return;
+        // 直接从数据库查出所有回收站的“顶层项”ID
+        List<String> topLevelIds = fileInfoService.queryChain()
+                .select(t1.ID)
+                .from(t1)
+                .where(t1.USER_ID.eq(userId))
+                .and(t1.STORAGE_PLATFORM_SETTING_ID.eq(configId))
+                .and(t1.IS_DELETED.eq(true))
+                .and(t1.PARENT_ID.isNull().or(
+                        notExists(QueryWrapper.create().from(t2).where(t2.ID.eq(t1.PARENT_ID)).and(t2.IS_DELETED.eq(true)))
+                ))
+                .listAs(String.class);
+
+        if (CollUtil.isNotEmpty(topLevelIds)) {
+            this.permanentlyDeleteFiles(topLevelIds);
         }
-
-        // 构建已删除文件的ID集合
-        Set<String> deletedFileIds = allDeletedFiles.stream()
-                .map(FileInfo::getId)
-                .collect(Collectors.toSet());
-
-        // 过滤出顶层删除项
-        List<String> topLevelDeletedFileIds = allDeletedFiles.stream()
-                .filter(file -> {
-                    String parentId = file.getParentId();
-                    return StrUtil.isBlank(parentId) || !deletedFileIds.contains(parentId);
-                })
-                .map(FileInfo::getId)
-                .collect(Collectors.toList());
-
-        // 递归删除顶层项（会自动处理子项）
-        this.permanentlyDeleteFiles(topLevelDeletedFileIds);
     }
 
 
