@@ -5,12 +5,14 @@ import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
 import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
+import com.xddcodec.fs.file.domain.qry.FileRecycleQry;
 import com.xddcodec.fs.file.domain.vo.FileDetailVO;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.file.service.FileRecycleService;
 import com.xddcodec.fs.file.service.FileUserFavoritesService;
+import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.domain.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,9 +49,8 @@ public class FileController {
 
     @GetMapping("/list")
     @Operation(summary = "查询所有文件列表", description = "支持关键词搜索和文件类型筛选的列表查询")
-    public Result<List<FileVO>> getList(FileQry qry) {
-        List<FileVO> list = fileInfoService.getList(qry);
-        return Result.ok(list);
+    public PageResult<FileVO> getList(FileQry qry) {
+        return fileInfoService.getList(qry);
     }
 
     @GetMapping("/{fileId}")
@@ -110,12 +111,10 @@ public class FileController {
         return Result.ok(fileVOS);
     }
 
-
-    @GetMapping("/recycles")
-    @Operation(summary = "获取回收站列表", description = "获取回收站列表")
-    public Result<?> getRecycles(String keyword) {
-        List<FileRecycleVO> list = fileRecycleService.getRecycles(keyword);
-        return Result.ok(list);
+    @GetMapping("/recycle/pages")
+    @Operation(summary = "分页获取回收站列表", description = "分页获取回收站列表")
+    public PageResult<?> getRecyclePages(FileRecycleQry qry) {
+        return fileRecycleService.getRecyclePages(qry);
     }
 
     @PutMapping("/recycles")

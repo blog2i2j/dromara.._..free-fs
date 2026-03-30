@@ -1,6 +1,8 @@
 package com.xddcodec.fs.file.service;
 
+import com.xddcodec.fs.file.domain.qry.FileRecycleQry;
 import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
+import com.xddcodec.fs.framework.common.domain.PageResult;
 
 import java.util.List;
 
@@ -13,11 +15,12 @@ import java.util.List;
 public interface FileRecycleService {
 
     /**
-     * 查询回收站文件列表
+     * 分页查询回收站文件列表
      *
-     * @return
+     * @param qry 查询参数
+     * @return 分页结果
      */
-    List<FileRecycleVO> getRecycles(String keyword);
+    PageResult<FileRecycleVO> getRecyclePages(FileRecycleQry qry);
 
     /**
      * 恢复已删除的文件

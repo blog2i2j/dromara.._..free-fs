@@ -4,16 +4,20 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
+import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.util.UpdateEntity;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
 import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
 import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
+import com.xddcodec.fs.file.domain.table.FileInfoTableDef;
+import com.xddcodec.fs.file.domain.table.FileUserFavoritesTableDef;
 import com.xddcodec.fs.file.domain.vo.FileDetailVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.mapper.FileInfoMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
+import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
@@ -470,10 +474,14 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     }
 
     @Override
-    public List<FileVO> getList(FileQry qry) {
+    public PageResult<FileVO> getList(FileQry qry) {
         String userId = StpUtil.getLoginIdAsString();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
-        // 构建查询条件
+
+        int pageNum = qry.getPage() == null ? 1 : qry.getPage();
+        int pageSize = qry.getPageSize() == null ? 10 : qry.getPageSize();
+        Page<FileVO> pageParam = new Page<>(pageNum, pageSize);
+
         QueryWrapper wrapper = new QueryWrapper();
         wrapper.select(
                         "fi.*",
@@ -485,69 +493,74 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                         .and(FILE_USER_FAVORITES.USER_ID.eq(userId)))
                 .where(FILE_INFO.USER_ID.eq(userId))
                 .and(FILE_INFO.IS_DELETED.eq(false));
+        // 存储平台过滤
         if (StringUtils.isEmpty(storagePlatformSettingId)) {
             wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.isNull());
         } else {
             wrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
         }
-        if (Boolean.TRUE.equals(qry.getIsDir())) {
-            wrapper.and(FILE_INFO.IS_DIR.eq(true));
-        }
-        // 最近使用过滤（优先级最高）
+        // 最近使用视图 (Recents)
         if (Boolean.TRUE.equals(qry.getIsRecents())) {
             wrapper.and(FILE_INFO.IS_DIR.eq(false))
-                    .orderBy(FILE_INFO.LAST_ACCESS_TIME.desc())
-                    .limit(20);
-
-            log.info("用户 {} 查询最近使用文件", userId);
-            List<FileVO> list = this.listAs(wrapper, FileVO.class);
-            if (CollUtil.isNotEmpty(list)) {
-                list.parallelStream().forEach(vo -> vo.setThumbnailUrl(fillThumbnailUrl(vo.getSuffix(), vo.getObjectKey())));
+                    .orderBy(FILE_INFO.LAST_ACCESS_TIME.desc());
+            // 最近使用通常不需要分页，只需要前 N 条，或者也可以直接分页查询第一页
+            pageParam.setPageSize(20);
+        } else {
+            // 收藏过滤
+            if (Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null) {
+                wrapper.and(FILE_USER_FAVORITES.FILE_ID.isNotNull());
             }
-            return list;
-        }
-        // 收藏过滤
-        if (Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null) {
-            wrapper.and("fuf.file_id IS NOT NULL");
-        }
 
-        // 父目录过滤
-        // 判断是否是特殊筛选视图（不限制父目录）
-        boolean isTypeFilter = StrUtil.isNotBlank(qry.getFileType());
-        boolean isFavoriteView = Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null;
-        boolean isDirFilter = Boolean.TRUE.equals(qry.getIsDir()) && qry.getParentId() == null;
+            // 目录/文件视图过滤
+            if (Boolean.TRUE.equals(qry.getIsDir())) {
+                wrapper.and(FILE_INFO.IS_DIR.eq(true));
+            }
 
-        // 只有在非特殊筛选视图下才限制父目录
-        if (!isTypeFilter && !isFavoriteView && !isDirFilter) {
-            if (qry.getParentId() == null) {
-                wrapper.and(FILE_INFO.PARENT_ID.isNull());
-            } else {
-                wrapper.and(FILE_INFO.PARENT_ID.eq(qry.getParentId()));
+            // 父目录逻辑：判断是否是特殊筛选视图
+            boolean isTypeFilter = StrUtil.isNotBlank(qry.getFileType());
+            boolean isFavoriteView = Boolean.TRUE.equals(qry.getIsFavorite()) && qry.getParentId() == null;
+            boolean isDirFilter = Boolean.TRUE.equals(qry.getIsDir()) && qry.getParentId() == null;
+
+            if (!isTypeFilter && !isFavoriteView && !isDirFilter) {
+                if (qry.getParentId() == null) {
+                    wrapper.and(FILE_INFO.PARENT_ID.isNull());
+                } else {
+                    wrapper.and(FILE_INFO.PARENT_ID.eq(qry.getParentId()));
+                }
+            }
+
+            // 关键词搜索
+            if (StrUtil.isNotBlank(qry.getKeyword())) {
+                String kw = qry.getKeyword().trim();
+                wrapper.and(FILE_INFO.ORIGINAL_NAME.like(kw).or(FILE_INFO.DISPLAY_NAME.like(kw)));
+            }
+
+            // 文件类型过滤 (内部调用 applyFileTypeFilter)
+            applyFileTypeFilter(wrapper, qry);
+
+            // 排序逻辑
+            String orderByField = StrUtil.toUnderlineCase(qry.getOrderBy());
+            boolean isAsc = "ASC".equalsIgnoreCase(qry.getOrderDirection());
+
+            wrapper.orderBy(FILE_INFO.IS_DIR.desc())
+                    .orderBy(FILE_INFO.UPDATE_TIME.desc());
+
+            if (StrUtil.isNotBlank(orderByField)) {
+                wrapper.orderBy(orderByField, isAsc);
             }
         }
 
-        // 关键词搜索
-        if (StrUtil.isNotBlank(qry.getKeyword())) {
-            String keyword = "%" + qry.getKeyword().trim() + "%";
-            wrapper.and(
-                    FILE_INFO.ORIGINAL_NAME.like(keyword)
-                            .or(FILE_INFO.DISPLAY_NAME.like(keyword))
+        // 执行分页查询 (使用 listAs 直接映射到 VO)
+        Page<FileVO> resultPage = this.pageAs(pageParam, wrapper, FileVO.class);
+
+        // 异步补充缩略图 (这里用 parallelStream 没问题，或者在转换后处理)
+        if (CollUtil.isNotEmpty(resultPage.getRecords())) {
+            resultPage.getRecords().parallelStream().forEach(vo ->
+                    vo.setThumbnailUrl(fillThumbnailUrl(vo.getSuffix(), vo.getObjectKey()))
             );
         }
-        // 文件类型过滤
-        applyFileTypeFilter(wrapper, qry);
-        // 排序
-        String orderBy = StrUtil.toUnderlineCase(qry.getOrderBy());
-        boolean isAsc = "ASC".equalsIgnoreCase(qry.getOrderDirection());
-        wrapper.orderBy(FILE_INFO.IS_DIR.desc())
-                .orderBy(FILE_INFO.UPDATE_TIME.desc())
-                .orderBy(orderBy, isAsc);
-        List<FileVO> list = this.listAs(wrapper, FileVO.class);
 
-        if (CollUtil.isNotEmpty(list)) {
-            list.parallelStream().forEach(vo -> vo.setThumbnailUrl(fillThumbnailUrl(vo.getSuffix(), vo.getObjectKey())));
-        }
-        return list;
+        return PageResult.success(resultPage.getRecords(), resultPage.getTotalRow());
     }
 
     /**

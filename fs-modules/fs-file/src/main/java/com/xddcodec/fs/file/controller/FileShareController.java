@@ -6,6 +6,7 @@ import com.xddcodec.fs.file.domain.qry.FileShareQry;
 import com.xddcodec.fs.file.domain.vo.*;
 import com.xddcodec.fs.file.service.FileShareAccessRecordService;
 import com.xddcodec.fs.file.service.FileShareService;
+import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.domain.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,11 +35,11 @@ public class FileShareController {
     @Autowired
     private FileShareAccessRecordService fileShareAccessRecordService;
 
-    @GetMapping("/list")
-    @Operation(summary = "获取我的分享", description = "获取我的分享列表")
-    public Result<List<FileShareVO>> getList(FileShareQry qry) {
-        List<FileShareVO> result = fileShareService.getList(qry);
-        return Result.ok(result);
+    @GetMapping("/pages")
+    @Operation(summary = "获取我的分享", description = "分页获取我的分享列表")
+    public PageResult<FileShareVO> getPages(FileShareQry qry) {
+
+        return fileShareService.getPages(qry);
     }
 
     @GetMapping("/{shareId}")
@@ -66,6 +67,13 @@ public class FileShareController {
     @Operation(summary = "取消分享", description = "取消分享")
     public Result<FileShareVO> cancelShares(@RequestBody List<String> ids) {
         fileShareService.cancelShares(ids);
+        return Result.ok();
+    }
+
+    @DeleteMapping("/clears")
+    @Operation(summary = "全部取消分享", description = "全部取消")
+    public Result<FileShareVO> cancelAllShares() {
+        fileShareService.cancelAllShares();
         return Result.ok();
     }
 
