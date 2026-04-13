@@ -2,16 +2,13 @@ package com.xddcodec.fs.system.controller;
 
 import com.xddcodec.fs.framework.common.domain.Result;
 import com.xddcodec.fs.system.domain.dto.LoginCmd;
-import com.xddcodec.fs.system.domain.vo.LoginUserVO;
+import com.xddcodec.fs.system.domain.vo.LoginResult;
 import com.xddcodec.fs.system.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/apis/auth")
@@ -24,8 +21,14 @@ public class AuthController {
     @Operation(summary = "登录")
     @PostMapping("/login")
     public Result<?> doLogin(@Valid @RequestBody LoginCmd cmd) {
-        LoginUserVO loginUserVO = authService.doLogin(cmd);
-        return Result.ok(loginUserVO);
+        LoginResult loginResult = authService.doLogin(cmd);
+        return Result.ok(loginResult);
+    }
+
+    @Operation(summary = "登录-发送验证码")
+    @PostMapping("/login/email-code")
+    public Result<?> sendLoginEmailCode(@RequestParam String account) {
+        return Result.ok();
     }
 
     @Operation(summary = "登出")

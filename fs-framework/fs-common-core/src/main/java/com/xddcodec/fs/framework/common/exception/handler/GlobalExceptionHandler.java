@@ -2,12 +2,14 @@ package com.xddcodec.fs.framework.common.exception.handler;
 
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.exception.NotPermissionException;
+import cn.dev33.satoken.exception.NotRoleException;
 import com.xddcodec.fs.framework.common.domain.Result;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.ErrorCode;
 import com.xddcodec.fs.framework.common.exception.StorageConfigException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.framework.common.utils.ErrorMessageUtils;
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -42,35 +44,60 @@ public class GlobalExceptionHandler {
     public Result<?> handleNotPermissionException(NotPermissionException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',权限码校验失败'{}'", requestURI, e.getMessage());
-        return Result.error(ErrorCode.FORBIDDEN.getCode(), ErrorCode.FORBIDDEN.getMsg(), null);
+        return Result.error(ErrorCode.FORBIDDEN.getCode(), I18nUtils.getMessage("auth.forbidden"), null);
     }
 
     /**
      * 角色权限异常
      */
-//    @ExceptionHandler(NotRoleException.class)
-//    public Result<?> handleNotRoleException(NotRoleException e, HttpServletRequest request) {
-//        String requestURI = request.getRequestURI();
-//        log.error("请求地址'{}',角色权限校验失败'{}'", requestURI, e.getMessage());
-//        return Result.forbidden("没有访问权限，请联系管理员授权");
-//    }
+    @ExceptionHandler(NotRoleException.class)
+    public Result<?> handleNotRoleException(NotRoleException e, HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        log.error("请求地址'{}',角色权限校验失败'{}'", requestURI, e.getMessage());
+        return Result.error(ErrorCode.FORBIDDEN.getCode(), I18nUtils.getMessage("auth.forbidden"), null);
+    }
 
     /**
      * 认证失败
      */
     @ExceptionHandler(NotLoginException.class)
     public Result<?> handlerNotLoginException(NotLoginException nle) {
-        ErrorCode errorCode = switch (nle.getType()) {
-            case NotLoginException.NOT_TOKEN -> ErrorCode.NOT_TOKEN;
-            case NotLoginException.INVALID_TOKEN -> ErrorCode.INVALID_TOKEN;
-            case NotLoginException.TOKEN_TIMEOUT -> ErrorCode.EXPIRED_TOKEN;
-            case NotLoginException.BE_REPLACED -> ErrorCode.REPLACED_TOKEN;
-            case NotLoginException.KICK_OUT -> ErrorCode.KICK_OUT_TOKEN;
-            case NotLoginException.NO_PREFIX -> ErrorCode.NO_PREFIX_MESSAGE_TOKEN;
-            default -> ErrorCode.UNAUTHORIZED;
-        };
+        ErrorCode errorCode;
+        String i18nKey;
+        
+        switch (nle.getType()) {
+            case NotLoginException.NOT_TOKEN -> {
+                errorCode = ErrorCode.NOT_TOKEN;
+                i18nKey = "auth.not.token";
+            }
+            case NotLoginException.INVALID_TOKEN -> {
+                errorCode = ErrorCode.INVALID_TOKEN;
+                i18nKey = "auth.invalid.token";
+            }
+            case NotLoginException.TOKEN_TIMEOUT -> {
+                errorCode = ErrorCode.EXPIRED_TOKEN;
+                i18nKey = "auth.expired.token";
+            }
+            case NotLoginException.BE_REPLACED -> {
+                errorCode = ErrorCode.REPLACED_TOKEN;
+                i18nKey = "auth.replaced.token";
+            }
+            case NotLoginException.KICK_OUT -> {
+                errorCode = ErrorCode.KICK_OUT_TOKEN;
+                i18nKey = "auth.kick.out.token";
+            }
+            case NotLoginException.NO_PREFIX -> {
+                errorCode = ErrorCode.NO_PREFIX_MESSAGE_TOKEN;
+                i18nKey = "auth.no.prefix.token";
+            }
+            default -> {
+                errorCode = ErrorCode.UNAUTHORIZED;
+                i18nKey = "auth.unauthorized";
+            }
+        }
+        
         log.error("Token exception [{}]: {}", errorCode.getCode(), nle.getMessage(), nle);
-        return Result.error(errorCode.getCode(), errorCode.getMsg(), null);
+        return Result.error(errorCode.getCode(), I18nUtils.getMessage(i18nKey), null);
     }
 
     /**
@@ -80,7 +107,7 @@ public class GlobalExceptionHandler {
     public Result<Void> handleDuplicateKeyException(DuplicateKeyException e, HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',数据库中已存在记录'{}'", requestURI, e.getMessage());
-        return Result.error("数据库中已存在该记录，请联系管理员确认");
+        return Result.error(I18nUtils.getMessage("db.duplicate.key"));
     }
 
     /**
@@ -130,7 +157,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler({HttpRequestMethodNotSupportedException.class})
     public Result<?> handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException e) {
-        return defHandler("不支持当前请求方法", e);
+        return defHandler(I18nUtils.getMessage("request.method.not.supported"), e);
     }
 
 
@@ -143,10 +170,8 @@ public class GlobalExceptionHandler {
     })
     public Result<?> handleFileUploadException(Exception e) {
         log.error("文件上传异常: {}", e.getClass().getName(), e);
-        // 其他文件上传异常
-        return Result.error(HttpStatus.BAD_REQUEST.value(),
-                "文件上传失败: " + e.getMessage(),
-                null);
+        String message = I18nUtils.getMessage("file.upload.failed") + ": " + e.getMessage();
+        return Result.error(HttpStatus.BAD_REQUEST.value(), message, null);
     }
 
     /**
@@ -191,8 +216,7 @@ public class GlobalExceptionHandler {
         // 针对根路径 "/" 的特殊友好提示
         if ("/".equals(requestURI)) {
             return Result.error(HttpStatus.NOT_FOUND.value(),
-                    "后端服务启动成功！检测到您正在访问根路径，请注意：本系统采用前后端分离架构，" +
-                            "如需查看页面，请参考文档部署并运行前端工程。", null);
+                    I18nUtils.getMessage("request.root.path.message"), null);
         }
 
         // 只对特定的前端资源请求使用 debug 级别日志，避免日志污染
@@ -202,7 +226,7 @@ public class GlobalExceptionHandler {
         }
         // 其他资源未找到仍然记录为警告
         log.warn("请求地址'{}',静态资源未找到", requestURI);
-        return Result.error(HttpStatus.NOT_FOUND.value(), "资源未找到", null);
+        return Result.error(HttpStatus.NOT_FOUND.value(), I18nUtils.getMessage("request.resource.not.found"), null);
     }
 
     /**
@@ -221,7 +245,7 @@ public class GlobalExceptionHandler {
             return null;
         }
         // 不是客户端断开异常，按正常异常处理
-        return defHandler("系统异常，请联系管理员！", e);
+        return defHandler(I18nUtils.getMessage("system.error"), e);
     }
 
     /**
@@ -229,7 +253,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public Result<?> handleException(Exception e) {
-        return defHandler("系统异常，请联系管理员！", e);
+        return defHandler(I18nUtils.getMessage("system.error"), e);
     }
 
     /**

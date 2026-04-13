@@ -2,7 +2,6 @@ package com.xddcodec.fs.file.cache;
 
 import com.xddcodec.fs.file.domain.FileTransferTask;
 import com.xddcodec.fs.file.enums.TransferTaskStatus;
-import com.xddcodec.fs.file.enums.TransferTaskType;
 import com.xddcodec.fs.framework.redis.repository.RedisRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

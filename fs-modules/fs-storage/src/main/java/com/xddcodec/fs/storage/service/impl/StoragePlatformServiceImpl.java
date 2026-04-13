@@ -8,6 +8,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import io.github.linpeilie.Converter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -35,6 +36,7 @@ public class StoragePlatformServiceImpl extends ServiceImpl<StoragePlatformMappe
 
 
     @Override
+    @Cacheable(value = "storagePlatform", key = "#identifier", unless = "#result == null")
     public StoragePlatform getStoragePlatformByIdentifier(String identifier) {
         return this.getOne(new QueryWrapper().where(STORAGE_PLATFORM.IDENTIFIER.eq(identifier)));
     }

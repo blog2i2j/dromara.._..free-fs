@@ -1,6 +1,9 @@
 package com.xddcodec.fs.system.domain.dto;
 
+import com.xddcodec.fs.framework.common.enums.LoginType;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
@@ -12,11 +15,15 @@ import lombok.Data;
 @Data
 public class LoginCmd {
 
+    @NotNull(message = "登录类型不能为空")
+    private LoginType loginType;
+
     @NotBlank(message = "账号不能为空")
-    private String username;
+    private String account;
 
     @NotBlank(message = "密码不能为空")
     private String password;
 
+    @Schema(description = "是否记住我")
     private Boolean isRemember;
 }

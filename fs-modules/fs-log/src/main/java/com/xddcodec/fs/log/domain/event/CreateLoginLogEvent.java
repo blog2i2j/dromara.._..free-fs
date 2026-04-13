@@ -1,5 +1,6 @@
 package com.xddcodec.fs.log.domain.event;
 
+import com.xddcodec.fs.framework.common.enums.LoginType;
 import lombok.Getter;
 import org.springframework.context.ApplicationEvent;
 
@@ -34,6 +35,10 @@ public class CreateLoginLogEvent extends ApplicationEvent {
      */
     private final String loginAddress;
     /**
+     * 登录方式
+     */
+    private LoginType loginType;
+    /**
      * 浏览器类型
      */
     private final String browser;
@@ -55,13 +60,14 @@ public class CreateLoginLogEvent extends ApplicationEvent {
     private final String userAgent;
 
     public CreateLoginLogEvent(Object source, String userId, String username, String loginIp,
-                               String loginAddress, String browser, String os, Integer status,
+                               String loginAddress, LoginType loginType, String browser, String os, Integer status,
                                String msg, String userAgent) {
         super(source);
         this.userId = userId;
         this.username = username;
         this.loginIp = loginIp;
         this.loginAddress = loginAddress;
+        this.loginType = loginType;
         this.browser = browser;
         this.os = os;
         this.status = status;
@@ -73,9 +79,9 @@ public class CreateLoginLogEvent extends ApplicationEvent {
      * 构建登录成功事件
      */
     public static CreateLoginLogEvent success(Object source, String userId, String username,
-                                              String loginIp, String loginAddress, String browser,
+                                              String loginIp, String loginAddress, LoginType loginType, String browser,
                                               String os, String userAgent) {
-        return new CreateLoginLogEvent(source, userId, username, loginIp, loginAddress,
+        return new CreateLoginLogEvent(source, userId, username, loginIp, loginAddress, loginType,
                 browser, os, 0, "登录成功", userAgent);
     }
 
@@ -83,9 +89,9 @@ public class CreateLoginLogEvent extends ApplicationEvent {
      * 构建登录失败事件
      */
     public static CreateLoginLogEvent failure(Object source, String username, String loginIp,
-                                              String loginAddress, String browser, String os,
+                                              String loginAddress, LoginType loginType, String browser, String os,
                                               String msg, String userAgent) {
-        return new CreateLoginLogEvent(source, null, username, loginIp, loginAddress,
+        return new CreateLoginLogEvent(source, null, username, loginIp, loginAddress, loginType,
                 browser, os, 1, msg, userAgent);
     }
 }

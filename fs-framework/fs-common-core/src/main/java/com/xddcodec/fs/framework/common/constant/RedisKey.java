@@ -8,8 +8,15 @@ public class RedisKey {
     private static final String BASE_KEY = "fs";
     private static final String SEPARATOR = ":";
 
-    // 验证码
-    private static final String VERIFY_CODE = "code";
+    /**
+     * 验证码key
+     */
+    private static final String VERIFY_CODE_KEY = "code";
+
+    /**
+     * 验证码过期时间（5分钟）
+     */
+    public static final long VERIFY_CODE_EXPIRE_SECONDS = 5 * 60;
 
     /**
      * 缓存过期时间（24小时）
@@ -38,7 +45,7 @@ public class RedisKey {
      * @return fs:code:邮箱
      */
     public static String getVerifyCodeKey(String email) {
-        return String.join(SEPARATOR, BASE_KEY, VERIFY_CODE, email);
+        return String.join(SEPARATOR, BASE_KEY, VERIFY_CODE_KEY, email);
     }
 
     /**

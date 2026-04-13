@@ -1,13 +1,13 @@
 package com.xddcodec.fs.system.service.impl;
 
-import cn.dev33.satoken.secure.SaSecureUtil;
 import cn.dev33.satoken.stp.SaTokenInfo;
 import cn.dev33.satoken.stp.StpUtil;
-import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.log.annotation.LoginLog;
+import com.xddcodec.fs.system.auth.LoginStrategy;
+import com.xddcodec.fs.system.auth.LoginStrategyFactory;
 import com.xddcodec.fs.system.domain.SysUser;
 import com.xddcodec.fs.system.domain.dto.LoginCmd;
-import com.xddcodec.fs.system.domain.vo.LoginUserVO;
+import com.xddcodec.fs.system.domain.vo.LoginResult;
 import com.xddcodec.fs.system.service.AuthService;
 import com.xddcodec.fs.system.service.SysUserService;
 import lombok.RequiredArgsConstructor;
@@ -25,31 +25,24 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
-    private final SysUserService userService;
+    private final LoginStrategyFactory loginStrategyFactory;
+    private final SysUserService sysUserService;
 
     @Override
-    @LoginLog("用户登录")
-    public LoginUserVO doLogin(LoginCmd cmd) {
-        SysUser user = userService.getByUsername(cmd.getUsername());
-        if (user == null) {
-            throw new BusinessException("用户不存在");
-        }
-        if (user.getStatus() == 1) {
-            throw new BusinessException("用户已被禁用");
-        }
-        if (!SaSecureUtil.sha256(cmd.getPassword()).equals(user.getPassword())) {
-            throw new BusinessException("密码不正确");
-        }
-        StpUtil.login(user.getId(), cmd.getIsRemember());
+    @LoginLog()
+    public LoginResult doLogin(LoginCmd cmd) {
+        LoginStrategy strategy = loginStrategyFactory.getStrategy(cmd.getLoginType());
+        LoginResult result = strategy.authenticate(cmd);
+
+        StpUtil.login(result.getId(), cmd.getIsRemember());
         SaTokenInfo tokenInfo = StpUtil.getTokenInfo();
-        LoginUserVO loginUserVO = new LoginUserVO();
-        loginUserVO.setId(user.getId());
-        loginUserVO.setUsername(user.getUsername());
-        loginUserVO.setAccessToken(tokenInfo.getTokenValue());
+        result.setAccessToken(tokenInfo.getTokenValue());
         //修改最后登录时间
+        SysUser user = new SysUser();
+        user.setId(result.getId());
         user.setLastLoginAt(LocalDateTime.now());
-        userService.updateById(user);
-        return loginUserVO;
+        sysUserService.updateById(user);
+        return result;
     }
 
     @Override

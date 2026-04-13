@@ -24,10 +24,12 @@ import com.xddcodec.fs.file.mapper.FileTransferTaskMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.file.service.FileTransferTaskService;
 import com.xddcodec.fs.file.enums.TransferTaskStatus;
+import com.xddcodec.fs.framework.common.context.WorkspaceContext;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
 import com.xddcodec.fs.framework.common.utils.ErrorMessageUtils;
 import com.xddcodec.fs.framework.common.utils.FileUtils;
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
 import com.xddcodec.fs.framework.common.utils.StringUtils;
 import com.xddcodec.fs.file.service.TransferSseService;
 import com.xddcodec.fs.storage.facade.StorageServiceFacade;
@@ -84,9 +86,11 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
     @Override
     public List<FileTransferTaskVO> getTransferFiles(TransferFilesQry qry) {
         String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         QueryWrapper queryWrapper = new QueryWrapper();
         queryWrapper.where(FILE_TRANSFER_TASK.USER_ID.eq(userId)
+                .and(FILE_TRANSFER_TASK.WORKSPACE_ID.eq(workspaceId))
                 .and(FILE_TRANSFER_TASK.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId)));
 //        if (qry.getStatusType() != null) {
 //
@@ -178,25 +182,25 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
     @Transactional(rollbackFor = Exception.class)
     public String initUpload(InitUploadCmd cmd) {
         String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         try {
             String taskId = IdUtil.fastSimpleUUID();
             String suffix = FileUtils.extName(cmd.getFileName());
             String tempFileName = IdUtil.fastSimpleUUID() + "." + suffix;
             String objectKey = FileUtils.generateObjectKey(applicationName, userId, tempFileName);
-            //如果有同名文件则需要重新生成
             String displayName = fileInfoService.generateUniqueName(
-                    userId,
+                    workspaceId,
                     cmd.getParentId(),
                     cmd.getFileName(),
                     false,
                     null,
                     storagePlatformSettingId
             );
-            // 创建上传任务
             FileTransferTask task = new FileTransferTask();
             task.setTaskId(taskId);
             task.setUserId(userId);
+            task.setWorkspaceId(workspaceId);
             task.setParentId(cmd.getParentId());
             task.setFileName(displayName);
             task.setFileSize(cmd.getFileSize());
@@ -216,13 +220,13 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             // 推送初始化成功状态事件
             transferSseService.sendStatusEvent(userId, taskId,
-                    TransferTaskStatus.initialized.name(), "任务初始化成功");
+                    TransferTaskStatus.initialized.name(), I18nUtils.getMessage("task.init.success"));
 
             log.info("初始化上传成功: fileName={}", cmd.getFileName());
             return task.getTaskId();
         } catch (Exception e) {
             log.error("初始化上传失败: fileName={}", cmd.getFileName(), e);
-            throw new StorageOperationException("初始化上传失败: " + e.getMessage(), e);
+            throw new StorageOperationException(I18nUtils.getMessage("task.init.failed", new Object[]{e.getMessage()}), e);
         }
     }
 
@@ -236,12 +240,12 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         try {
             task = getTaskFromCacheOrDB(taskId);
             if (!TransferTaskStatus.initialized.equals(task.getStatus())) {
-                throw new BusinessException("任务状态不正确，当前状态: " + task.getStatus());
+                throw new BusinessException(I18nUtils.getMessage("task.status.incorrect", new Object[]{task.getStatus()}));
             }
             updateTaskStatus(task, TransferTaskStatus.checking);
 
             transferSseService.sendStatusEvent(userId, taskId,
-                    TransferTaskStatus.checking.name(), "正在校验文件");
+                    TransferTaskStatus.checking.name(), I18nUtils.getMessage("task.checking"));
             // 处理空文件边界情况
             if (task.getFileSize() == null || task.getFileSize() == 0) {
                 log.info("检测到空文件上传，直接执行快速完成逻辑: taskId={}", taskId);
@@ -250,8 +254,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             // 检查同存储平台是否存在相同MD5的文件（秒传）
             QueryWrapper queryWrapper = new QueryWrapper();
+            String workspaceId = WorkspaceContext.getWorkspaceId();
             queryWrapper.where(FILE_INFO.CONTENT_MD5.eq(cmd.getFileMd5())
-                    .and(FILE_INFO.USER_ID.eq(userId))
+                    .and(FILE_INFO.WORKSPACE_ID.eq(workspaceId))
                     .and(FILE_INFO.IS_DELETED.eq(false)));
             if (StringUtils.isEmpty(storagePlatformSettingId)) {
                 queryWrapper.and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.isNull());
@@ -283,18 +288,18 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             // 推送可以开始上传状态事件
             transferSseService.sendStatusEvent(userId, taskId,
-                    TransferTaskStatus.uploading.name(), "校验完成，可以开始上传");
+                    TransferTaskStatus.uploading.name(), I18nUtils.getMessage("task.check.complete"));
 
             return CheckUploadResultVO.builder()
                     .isQuickUpload(false)
                     .taskId(taskId)
                     .uploadId(uploadId)
-                    .message("校验完成，可以开始上传")
+                    .message(I18nUtils.getMessage("task.check.complete"))
                     .build();
         } catch (Exception e) {
             log.error("文件校验失败: taskId={}", taskId, e);
-            exceptionHandler.handleTaskFailed(taskId, "文件校验失败: " + e.getMessage(), e);
-            throw new StorageOperationException("文件校验失败: " + e.getMessage(), e);
+            exceptionHandler.handleTaskFailed(taskId, I18nUtils.getMessage("task.check.failed", new Object[]{e.getMessage()}), e);
+            throw new StorageOperationException(I18nUtils.getMessage("task.check.failed", new Object[]{e.getMessage()}), e);
         }
     }
 
@@ -316,7 +321,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             return handleQuickUpload(task, emptyFileInfo, fileMd5, storagePlatformSettingId);
         } catch (Exception e) {
             log.error("空文件处理失败: taskId={}", taskId, e);
-            throw new StorageOperationException("空文件处理失败", e);
+            throw new StorageOperationException(I18nUtils.getMessage("task.empty.file.failed"), e);
         }
     }
 
@@ -333,7 +338,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             String fileId = IdUtil.fastSimpleUUID();
             LocalDateTime now = LocalDateTime.now();
             String displayName = fileInfoService.generateUniqueName(
-                    task.getUserId(),
+                    task.getWorkspaceId(),
                     task.getParentId(),
                     task.getFileName(),
                     false,
@@ -342,7 +347,6 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             );
             FileInfo newFileInfo = new FileInfo();
             newFileInfo.setId(fileId);
-            // 复用已存在文件的 objectKey
             newFileInfo.setObjectKey(existFile.getObjectKey());
             newFileInfo.setOriginalName(task.getFileName());
             newFileInfo.setDisplayName(displayName);
@@ -351,6 +355,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             newFileInfo.setMimeType(task.getMimeType());
             newFileInfo.setIsDir(false);
             newFileInfo.setParentId(task.getParentId());
+            newFileInfo.setWorkspaceId(task.getWorkspaceId());
             newFileInfo.setUserId(task.getUserId());
             newFileInfo.setContentMd5(fileMd5);
             newFileInfo.setStoragePlatformSettingId(task.getStoragePlatformSettingId());
@@ -381,11 +386,11 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
                     .isQuickUpload(true)
                     .taskId(taskId)
                     .fileId(fileId)
-                    .message("秒传成功")
+                    .message(I18nUtils.getMessage("task.quick.upload.success"))
                     .build();
         } catch (Exception e) {
             log.error("秒传处理失败: taskId={}", taskId, e);
-            throw new StorageOperationException("秒传处理失败: " + e.getMessage(), e);
+            throw new StorageOperationException(I18nUtils.getMessage("task.quick.upload.failed", new Object[]{e.getMessage()}), e);
         }
     }
 
@@ -489,7 +494,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             return;
         }
         if (!TransferTaskStatus.uploading.equals(task.getStatus())) {
-            throw new BusinessException("任务状态不正确: " + task.getStatus());
+            throw new BusinessException(I18nUtils.getMessage("task.status.incorrect.expected", new Object[]{task.getStatus()}));
         }
         // 检查分片是否已存在（避免重复上传）
         if (cacheManager.isChunkTransferred(taskId, chunkIndex)) {
@@ -532,7 +537,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             // 验证当前状态是否支持暂停（上传或下载中）
             if (!TransferTaskStatus.uploading.equals(currentStatus)
                     && !TransferTaskStatus.downloading.equals(currentStatus)) {
-                throw new BusinessException("当前任务状态不支持暂停操作: " + currentStatus);
+                throw new BusinessException(I18nUtils.getMessage("task.status.not.support.pause", new Object[]{currentStatus}));
             }
 
             // 验证状态转换合法性
@@ -552,9 +557,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             if (task != null) {
                 String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(e);
                 transferSseService.sendErrorEvent(task.getUserId(), taskId,
-                        "PAUSE_FAILED", "暂停失败: " + userFriendlyMsg);
+                        "PAUSE_FAILED", I18nUtils.getMessage("transfer.pause.failed", new Object[]{userFriendlyMsg}));
             }
-            throw new StorageOperationException("暂停失败: " + e.getMessage(), e);
+            throw new StorageOperationException(I18nUtils.getMessage("transfer.pause.failed", new Object[]{e.getMessage()}), e);
         }
     }
 
@@ -567,7 +572,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             // 验证当前状态是否支持恢复
             if (!TransferTaskStatus.paused.equals(currentStatus)) {
-                throw new BusinessException("当前任务状态不支持继续操作: " + currentStatus);
+                throw new BusinessException(I18nUtils.getMessage("task.status.not.support.resume", new Object[]{currentStatus}));
             }
 
             // 根据任务类型确定目标状态
@@ -603,9 +608,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             if (task != null) {
                 String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(e);
                 transferSseService.sendErrorEvent(task.getUserId(), taskId,
-                        "RESUME_FAILED", "继续任务失败: " + userFriendlyMsg);
+                        "RESUME_FAILED", I18nUtils.getMessage("transfer.resume.failed", new Object[]{userFriendlyMsg}));
             }
-            throw new StorageOperationException("继续任务失败: " + e.getMessage(), e);
+            throw new StorageOperationException(I18nUtils.getMessage("transfer.resume.failed", new Object[]{e.getMessage()}), e);
         }
     }
 
@@ -625,7 +630,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             // 检查任务状态是否可以取消
             if (TransferTaskStatus.completed.equals(currentStatus)) {
-                throw new BusinessException("任务已完成，无法取消");
+                throw new BusinessException(I18nUtils.getMessage("task.completed.cannot.cancel"));
             }
 
             // 验证状态转换合法性
@@ -678,9 +683,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             if (task != null) {
                 String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(e);
                 transferSseService.sendErrorEvent(task.getUserId(), taskId,
-                        "CANCEL_FAILED", "取消失败: " + userFriendlyMsg);
+                        "CANCEL_FAILED", I18nUtils.getMessage("transfer.cancel.failed", new Object[]{userFriendlyMsg}));
             }
-            throw new StorageOperationException("取消传输任务失败: " + e.getMessage(), e);
+            throw new StorageOperationException(I18nUtils.getMessage("transfer.cancel.failed", new Object[]{e.getMessage()}), e);
         }
     }
 
@@ -696,12 +701,12 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             log.info("开始合并文件: taskId={}", taskId);
             task = getByTaskId(taskId);
             if (task == null) {
-                throw new StorageOperationException("上传任务不存在: " + taskId);
+                throw new StorageOperationException(I18nUtils.getMessage("task.not.exist", new Object[]{taskId}));
             }
 
             // 验证当前状态是否允许合并
             if (!TransferTaskStatus.uploading.equals(task.getStatus())) {
-                throw new BusinessException("任务状态不正确，当前状态: " + task.getStatus());
+                throw new BusinessException(I18nUtils.getMessage("task.status.incorrect", new Object[]{task.getStatus()}));
             }
 
             Integer uploadedCount = cacheManager.getTransferredChunks(taskId);
@@ -776,6 +781,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             fileInfo.setMimeType(task.getMimeType());
             fileInfo.setIsDir(false);
             fileInfo.setParentId(task.getParentId());
+            fileInfo.setWorkspaceId(task.getWorkspaceId());
             fileInfo.setUserId(task.getUserId());
             fileInfo.setContentMd5(task.getFileMd5());
             fileInfo.setStoragePlatformSettingId(task.getStoragePlatformSettingId());
@@ -785,9 +791,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             fileInfoService.save(fileInfo);
 
-            // 更新任务状态为已完成
             task.setStatus(TransferTaskStatus.completed);
-            // 最终同步一次分片数量
             task.setUploadedChunks(uploadedCount);
             task.setCompleteTime(completeTime);
             this.updateById(task);
@@ -809,10 +813,10 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             if (task != null) {
                 String userFriendlyMsg = ErrorMessageUtils.extractUserFriendlyMessage(e);
                 transferSseService.sendErrorEvent(task.getUserId(), taskId,
-                        "MERGE_FAILED", "文件合并失败: " + userFriendlyMsg);
+                        "MERGE_FAILED", I18nUtils.getMessage("task.merge.failed", new Object[]{userFriendlyMsg}));
             }
 
-            throw new StorageOperationException("分片合并失败: " + e.getMessage(), e);
+            throw new StorageOperationException(I18nUtils.getMessage("task.merge.failed", new Object[]{e.getMessage()}), e);
         }
     }
 
@@ -835,7 +839,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
                     QueryWrapper.create().where(FileTransferTask::getTaskId).eq(taskId)
             );
             if (task == null) {
-                throw new BusinessException("任务不存在: " + taskId);
+                throw new BusinessException(I18nUtils.getMessage("task.not.exist", new Object[]{taskId}));
             }
             // 缓存到 Redis
             cacheManager.cacheTask(task);
@@ -929,11 +933,11 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
      */
     private int calculateTotalChunks(Long fileSize, Long chunkSize) {
         if (fileSize == null || fileSize <= 0) {
-            throw new BusinessException("文件大小无效");
+            throw new BusinessException(I18nUtils.getMessage("task.file.size.invalid"));
         }
 
         if (chunkSize == null || chunkSize <= 0) {
-            throw new BusinessException("分片大小无效");
+            throw new BusinessException(I18nUtils.getMessage("task.chunk.size.invalid"));
         }
         // 向上取整
         int totalChunks = (int) Math.ceil((double) fileSize / chunkSize);
@@ -947,11 +951,13 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
     @Override
     public void clearTransfers() {
         String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
 
         QueryWrapper queryWrapper = new QueryWrapper();
         queryWrapper.where(FILE_TRANSFER_TASK.STATUS.eq(TransferTaskStatus.completed))
                 .and(FILE_TRANSFER_TASK.USER_ID.eq(userId))
+                .and(FILE_TRANSFER_TASK.WORKSPACE_ID.eq(workspaceId))
                 .and(FILE_TRANSFER_TASK.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId));
         List<FileTransferTask> tasks = this.list(queryWrapper);
 
@@ -967,17 +973,17 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
     @Override
     public FileDownloadVO downloadFile(String fileId) {
-        String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         FileInfo fileInfo = fileInfoService.getById(fileId);
         if (fileInfo == null) {
-            throw new BusinessException("下载失败，该文件不存在");
+            throw new BusinessException(I18nUtils.getMessage("file.download.failed.not.exist"));
         }
-        if (!fileInfo.getUserId().equals(userId)) {
-            throw new BusinessException("无权限下载");
+        if (!workspaceId.equals(fileInfo.getWorkspaceId())) {
+            throw new BusinessException(I18nUtils.getMessage("file.no.permission.download"));
         }
         IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
         if (!storageService.isFileExist(fileInfo.getObjectKey())) {
-            throw new BusinessException("下载失败，该文件不存在");
+            throw new BusinessException(I18nUtils.getMessage("file.download.failed.not.exist"));
         }
         InputStream inputStream = storageService.downloadFile(fileInfo.getObjectKey());
         InputStreamResource resource = new InputStreamResource(inputStream);
@@ -999,6 +1005,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
     @Transactional(rollbackFor = Exception.class)
     public InitDownloadResultVO initDownload(InitDownloadCmd cmd) {
         String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         String taskId = null;
 
@@ -1010,6 +1017,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             QueryWrapper queryWrapper = new QueryWrapper();
             queryWrapper.where(FILE_TRANSFER_TASK.USER_ID.eq(userId)
+                    .and(FILE_TRANSFER_TASK.WORKSPACE_ID.eq(workspaceId))
                     .and(FILE_TRANSFER_TASK.TASK_TYPE.eq(TransferTaskType.download))
                     .and(FILE_TRANSFER_TASK.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
                     .and(FILE_TRANSFER_TASK.STATUS.in(
@@ -1028,17 +1036,17 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             FileInfo fileInfo = fileInfoService.getById(cmd.getFileId());
             if (fileInfo == null) {
-                throw new BusinessException("文件不存在");
+                throw new BusinessException(I18nUtils.getMessage("file.not.found"));
             }
 
-            if (!fileInfo.getUserId().equals(userId)) {
-                throw new BusinessException("无权限下载该文件");
+            if (!workspaceId.equals(fileInfo.getWorkspaceId())) {
+                throw new BusinessException(I18nUtils.getMessage("file.no.permission.download.file"));
             }
 
             IStorageOperationService storageService =
                     storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
             if (!storageService.isFileExist(fileInfo.getObjectKey())) {
-                throw new BusinessException("文件在存储服务中不存在");
+                throw new BusinessException(I18nUtils.getMessage("file.not.in.storage"));
             }
 
             Long chunkSize = cmd.getChunkSize();
@@ -1052,6 +1060,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             FileTransferTask task = new FileTransferTask();
             task.setTaskId(taskId);
             task.setUserId(userId);
+            task.setWorkspaceId(workspaceId);
             task.setParentId(fileInfo.getParentId());
             task.setFileName(fileInfo.getDisplayName());
             task.setFileSize(fileInfo.getSize());
@@ -1091,14 +1100,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         } catch (BusinessException e) {
             log.error("初始化下载任务失败: fileId={}", cmd.getFileId(), e);
 
+            // 统一处理业务异常
             if (taskId != null) {
-                if (e.getMessage().contains("无权限")) {
-                    downloadExceptionHandler.handlePermissionDenied(taskId, userId, cmd.getFileId());
-                } else if (e.getMessage().contains("不存在")) {
-                    downloadExceptionHandler.handleFileNotFound(taskId, cmd.getFileId());
-                } else {
-                    downloadExceptionHandler.handleDownloadTaskFailed(taskId, e.getMessage(), e);
-                }
+                downloadExceptionHandler.handleDownloadTaskFailed(taskId, e.getMessage(), e);
             }
             throw e;
         } catch (Exception e) {
@@ -1106,9 +1110,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
             if (taskId != null) {
                 downloadExceptionHandler.handleDownloadTaskFailed(taskId,
-                        "初始化下载任务失败: " + e.getMessage(), e);
+                        I18nUtils.getMessage("transfer.download.init.failed", new Object[]{e.getMessage()}), e);
             }
-            throw new StorageOperationException("初始化下载任务失败: " + e.getMessage(), e);
+            throw new StorageOperationException(I18nUtils.getMessage("transfer.download.init.failed", new Object[]{e.getMessage()}), e);
         }
     }
 
@@ -1128,7 +1132,8 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
             task = getTaskFromCacheOrDB(taskId);
 
             if (task.getTaskType() != TransferTaskType.download) {
-                throw new BusinessException("任务类型不正确，期望: download，实际: " + task.getTaskType());
+                throw new BusinessException(I18nUtils.getMessage("task.type.incorrect", 
+                    new Object[]{"download", task.getTaskType()}));
             }
 
             if (chunkIndex < 0 || chunkIndex >= task.getTotalChunks()) {
@@ -1170,18 +1175,9 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         } catch (BusinessException e) {
             log.error("下载分片失败: taskId={}, chunkIndex={}", taskId, chunkIndex, e);
 
-            // 处理业务异常
+            // 统一处理业务异常
             if (task != null) {
-                if (e.getMessage().contains("分片索引无效")) {
-                    downloadExceptionHandler.handleChunkDownloadFailed(taskId, chunkIndex,
-                            "分片索引无效", e);
-                } else if (e.getMessage().contains("任务类型不正确")) {
-                    downloadExceptionHandler.handleChunkDownloadFailed(taskId, chunkIndex,
-                            "任务类型不正确", e);
-                } else {
-                    downloadExceptionHandler.handleChunkDownloadFailed(taskId, chunkIndex,
-                            e.getMessage(), e);
-                }
+                downloadExceptionHandler.handleChunkDownloadFailed(taskId, chunkIndex, e.getMessage(), e);
             }
             throw e;
         } catch (StorageOperationException e) {
@@ -1195,12 +1191,12 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
         } catch (Exception e) {
             log.error("下载分片失败: taskId={}, chunkIndex={}", taskId, chunkIndex, e);
 
-            // 处理其他异常
+            // 统一处理其他异常
             if (task != null) {
                 downloadExceptionHandler.handleChunkDownloadFailed(taskId, chunkIndex,
-                        "下载分片失败: " + e.getMessage(), e);
+                        I18nUtils.getMessage("transfer.download.chunk.failed", new Object[]{e.getMessage()}), e);
             }
-            throw new StorageOperationException("下载分片失败: " + e.getMessage(), e);
+            throw new StorageOperationException(I18nUtils.getMessage("transfer.download.chunk.failed.detail"), e);
         }
     }
 
@@ -1308,7 +1304,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
     @Override
     public FileTransferTask getTask(String taskId) {
         if (StringUtils.isBlank(taskId)) {
-            throw new BusinessException("任务ID不能为空");
+            throw new BusinessException(I18nUtils.getMessage("task.id.empty"));
         }
 
         QueryWrapper queryWrapper = QueryWrapper.create()
@@ -1316,7 +1312,7 @@ public class FileTransferTaskServiceImpl extends ServiceImpl<FileTransferTaskMap
 
         FileTransferTask task = this.getOne(queryWrapper);
         if (task == null) {
-            throw new BusinessException("任务不存在: " + taskId);
+            throw new BusinessException(I18nUtils.getMessage("task.not.exist", new Object[]{taskId}));
         }
 
         return task;

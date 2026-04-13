@@ -3,6 +3,7 @@ package com.xddcodec.fs.log.domain;
 import com.mybatisflex.annotation.Id;
 import com.mybatisflex.annotation.KeyType;
 import com.mybatisflex.annotation.Table;
+import com.xddcodec.fs.framework.common.enums.LoginType;
 import lombok.Data;
 
 import java.io.Serial;
@@ -47,6 +48,11 @@ public class SysLoginLog implements Serializable {
      * 登录地址
      */
     private String loginAddress;
+
+    /**
+     * 登录方式
+     */
+    private LoginType loginType;
 
     /**
      * 浏览器类型

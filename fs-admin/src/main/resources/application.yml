@@ -35,11 +35,15 @@ spring:
   threads:
     virtual:
       enabled: true
+  # 国际化支持
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
   # 模版引擎配置
-#  thymeleaf:
-#    mode: LEGACYHTML5
-#    prefix: classpath:/templates/
-#    encoding: UTF-8
+  #  thymeleaf:
+  #    mode: LEGACYHTML5
+  #    prefix: classpath:/templates/
+  #    encoding: UTF-8
 
   # 邮件配置
   mail:
@@ -112,6 +116,7 @@ security:
   #排除不需要登录认证的接口
   excludes:
     - /apis/auth/login
+    - /apis/auth/login/**
     - /apis/user/register
     - /apis/user/forget-password/code/**
     - /apis/user/forget-password

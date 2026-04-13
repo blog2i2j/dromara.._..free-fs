@@ -1,5 +1,6 @@
 package com.xddcodec.fs.file.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
 import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
 import com.xddcodec.fs.file.domain.qry.FileShareQry;
@@ -58,6 +59,7 @@ public class FileShareController {
 
     @PostMapping("/create")
     @Operation(summary = "创建分享", description = "创建分享")
+    @SaCheckPermission("file:share")
     public Result<FileShareVO> createDirectory(@RequestBody @Validated CreateShareCmd cmd) {
         FileShareVO fileShareVO = fileShareService.createShare(cmd);
         return Result.ok(fileShareVO);
@@ -65,6 +67,7 @@ public class FileShareController {
 
     @DeleteMapping("/cancels")
     @Operation(summary = "取消分享", description = "取消分享")
+    @SaCheckPermission("file:share")
     public Result<FileShareVO> cancelShares(@RequestBody List<String> ids) {
         fileShareService.cancelShares(ids);
         return Result.ok();
@@ -72,6 +75,7 @@ public class FileShareController {
 
     @DeleteMapping("/clears")
     @Operation(summary = "全部取消分享", description = "全部取消")
+    @SaCheckPermission("file:share")
     public Result<FileShareVO> cancelAllShares() {
         fileShareService.cancelAllShares();
         return Result.ok();

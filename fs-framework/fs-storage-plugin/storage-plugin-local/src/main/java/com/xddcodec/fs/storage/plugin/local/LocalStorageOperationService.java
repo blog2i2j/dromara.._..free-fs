@@ -25,7 +25,7 @@ import java.util.*;
 @Slf4j
 @StoragePlugin(
     identifier = "Local",
-    name = "本地存储，默认插件"
+    name = "Local"
 )
 public class LocalStorageOperationService extends AbstractStorageOperationService {
 
