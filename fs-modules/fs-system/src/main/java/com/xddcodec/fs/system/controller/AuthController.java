@@ -28,6 +28,7 @@ public class AuthController {
     @Operation(summary = "登录-发送验证码")
     @PostMapping("/login/email-code")
     public Result<?> sendLoginEmailCode(@RequestParam String account) {
+        authService.sendLoginEmailCode(account);
         return Result.ok();
     }
 

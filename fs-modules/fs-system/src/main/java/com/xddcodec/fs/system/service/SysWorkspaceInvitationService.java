@@ -3,6 +3,7 @@ package com.xddcodec.fs.system.service;
 import com.mybatisflex.core.service.IService;
 import com.xddcodec.fs.system.domain.SysWorkspaceInvitation;
 import com.xddcodec.fs.system.domain.dto.CreateInvitationCmd;
+import com.xddcodec.fs.system.domain.vo.InvitationDetailVO;
 import com.xddcodec.fs.system.domain.vo.WorkspaceInvitationVO;
 
 import java.util.List;
@@ -48,6 +49,14 @@ public interface SysWorkspaceInvitationService extends IService<SysWorkspaceInvi
      * @return 邀请信息
      */
     SysWorkspaceInvitation findByToken(String token);
+
+    /**
+     * 验证邀请令牌并获取邀请详情
+     *
+     * @param token 邀请令牌
+     * @return 邀请详情
+     */
+    InvitationDetailVO verifyInvitation(String token);
 
     /**
      * 接受邀请

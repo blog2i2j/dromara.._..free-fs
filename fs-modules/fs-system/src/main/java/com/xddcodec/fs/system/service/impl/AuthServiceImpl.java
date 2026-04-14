@@ -2,6 +2,15 @@ package com.xddcodec.fs.system.service.impl;
 
 import cn.dev33.satoken.stp.SaTokenInfo;
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.core.util.RandomUtil;
+import com.mybatisflex.core.query.QueryWrapper;
+import com.xddcodec.fs.framework.common.constant.CommonConstant;
+import com.xddcodec.fs.framework.common.constant.RedisKey;
+import com.xddcodec.fs.framework.common.exception.BusinessException;
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
+import com.xddcodec.fs.framework.notify.mail.domain.Mail;
+import com.xddcodec.fs.framework.notify.mail.event.MailEvent;
+import com.xddcodec.fs.framework.redis.repository.RedisRepository;
 import com.xddcodec.fs.log.annotation.LoginLog;
 import com.xddcodec.fs.system.auth.LoginStrategy;
 import com.xddcodec.fs.system.auth.LoginStrategyFactory;
@@ -11,9 +20,12 @@ import com.xddcodec.fs.system.domain.vo.LoginResult;
 import com.xddcodec.fs.system.service.AuthService;
 import com.xddcodec.fs.system.service.SysUserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+
+import static com.xddcodec.fs.system.domain.table.SysUserTableDef.SYS_USER;
 
 /**
  * 认证服务实现
@@ -27,6 +39,8 @@ public class AuthServiceImpl implements AuthService {
 
     private final LoginStrategyFactory loginStrategyFactory;
     private final SysUserService sysUserService;
+    private final RedisRepository redisRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @LoginLog()
@@ -48,5 +62,22 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout() {
         StpUtil.logout();
+    }
+
+    @Override
+    public void sendLoginEmailCode(String account) {
+        SysUser user = sysUserService.getByMail(account);
+        if (user == null) {
+            throw new BusinessException(I18nUtils.getMessage("user.not.exist"));
+        }
+
+        // 生成验证码
+        String code = RandomUtil.randomNumbers(CommonConstant.VERIFY_CODE_LENGTH);
+        String redisKey = RedisKey.getVerifyCodeKey(account);
+        redisRepository.setExpire(redisKey, code, RedisKey.VERIFY_CODE_EXPIRE_SECONDS);
+
+        // 发送邮件
+        Mail mail = Mail.buildVerifyCodeMail(user.getEmail(), user.getNickname(), code);
+        eventPublisher.publishEvent(new MailEvent(this, mail));
     }
 }

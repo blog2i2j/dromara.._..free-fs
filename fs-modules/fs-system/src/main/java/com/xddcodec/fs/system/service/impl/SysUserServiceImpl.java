@@ -72,6 +72,12 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     @Override
+    public SysUser getByMail(String email) {
+
+        return this.getOne(new QueryWrapper().where(SYS_USER.EMAIL.eq(email)));
+    }
+
+    @Override
     @Cacheable(value = "user", keyGenerator = "userKeyGenerator")
     public SysUserVO getDetail() {
         String userId = StpUtil.getLoginIdAsString();
@@ -101,7 +107,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         user.setNickname(cmd.getNickname());
         user.setAvatar(cmd.getAvatar());
         this.save(user);
-        //初始化用户传输配置
+        
+        // 初始化用户传输配置
         userTransferSettingService.initUserTransferSetting(user.getId());
 
         // 处理邀请令牌

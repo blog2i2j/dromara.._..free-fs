@@ -2,6 +2,8 @@ package com.xddcodec.fs.system.domain.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.xddcodec.fs.framework.common.utils.DateUtils;
+import com.xddcodec.fs.system.domain.SysWorkspaceInvitation;
+import io.github.linpeilie.annotations.AutoMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -16,6 +18,7 @@ import java.time.LocalDateTime;
  * @Date: 2026/3/31
  */
 @Data
+@AutoMapper(target = SysWorkspaceInvitation.class)
 @Schema(description = "工作空间邀请信息")
 public class WorkspaceInvitationVO implements Serializable {
 
@@ -49,6 +52,10 @@ public class WorkspaceInvitationVO implements Serializable {
     @Schema(description = "邀请过期时间")
     @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
     private LocalDateTime expiresAt;
+
+    @Schema(description = "接受时间")
+    @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
+    private LocalDateTime acceptedAt;
 
     @Schema(description = "创建时间")
     @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)

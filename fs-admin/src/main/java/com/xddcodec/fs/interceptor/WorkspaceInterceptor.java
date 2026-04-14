@@ -16,7 +16,11 @@ import java.io.IOException;
 import java.util.Set;
 
 /**
- * 工作空间拦截器 - 从请求头提取工作空间ID并验证成员身份
+ * 工作空间拦截器 - 从请求头或请求参数提取工作空间ID并验证成员身份
+ * 
+ * 工作空间ID获取优先级：
+ * 1. 请求头 X-Workspace-Id（推荐，用于 API 调用）
+ * 2. 请求参数 X-Workspace-Id（用于无法设置请求头的场景，如文件下载）
  *
  * @Author: xddcode
  * @Date: 2026/3/31
@@ -39,7 +43,9 @@ public class WorkspaceInterceptor implements HandlerInterceptor {
             "/apis/workspace/list",
             "/apis/workspace/check-slug",
             "/apis/permission/list",
-            "/apis/transfer/sse"
+            "/apis/transfer/sse",
+            "/apis/invitation/verify",  // 邀请验证接口（公开）
+            "/apis/invitation/accept"   // 邀请接受接口（需登录但不需要工作空间）
     );
 
     @Override
@@ -56,8 +62,12 @@ public class WorkspaceInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 获取工作空间ID
+        // 获取工作空间ID - 优先从请求头获取，如果没有则从请求参数获取
         String workspaceId = req.getHeader(CommonConstant.X_WORKSPACE_ID);
+        if (workspaceId == null || workspaceId.isBlank()) {
+            workspaceId = req.getParameter(CommonConstant.X_WORKSPACE_ID);
+        }
+        
         if (workspaceId == null || workspaceId.isBlank()) {
             res.setStatus(400);
             res.setContentType("application/json;charset=UTF-8");

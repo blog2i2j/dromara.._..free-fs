@@ -23,4 +23,11 @@ public interface AuthService {
      * 退出登录
      */
     void logout();
+
+    /**
+     * 发送登录验证码
+     *
+     * @param account 账号（邮箱）
+     */
+    void sendLoginEmailCode(String account);
 }

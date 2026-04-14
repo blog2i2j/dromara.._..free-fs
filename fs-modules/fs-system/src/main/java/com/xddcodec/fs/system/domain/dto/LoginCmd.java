@@ -21,7 +21,7 @@ public class LoginCmd {
     @NotBlank(message = "账号不能为空")
     private String account;
 
-    @NotBlank(message = "密码不能为空")
+    @NotBlank(message = "密码不能为空，验证码模式下此为code")
     private String password;
 
     @Schema(description = "是否记住我")

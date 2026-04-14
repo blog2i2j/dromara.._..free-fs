@@ -1,5 +1,6 @@
 package com.xddcodec.fs.system.domain;
 
+import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Id;
 import com.mybatisflex.annotation.KeyType;
 import com.mybatisflex.annotation.Table;
@@ -61,4 +62,29 @@ public class SysWorkspaceInvitation extends BaseEntity {
      * 邀请过期时间
      */
     private LocalDateTime expiresAt;
+
+    /**
+     * 接受时间
+     */
+    private LocalDateTime acceptedAt;
+
+    // ========== 关联查询字段（非数据库字段） ==========
+
+    /**
+     * 工作空间名称（关联查询）
+     */
+    @Column(ignore = true)
+    private String workspaceName;
+
+    /**
+     * 角色名称（关联查询）
+     */
+    @Column(ignore = true)
+    private String roleName;
+
+    /**
+     * 邀请人名称（关联查询）
+     */
+    @Column(ignore = true)
+    private String inviterName;
 }

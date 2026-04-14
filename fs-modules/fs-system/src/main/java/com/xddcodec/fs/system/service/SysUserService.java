@@ -23,6 +23,14 @@ public interface SysUserService extends IService<SysUser> {
     SysUser getByUsername(String username);
 
     /**
+     * 根据邮箱获取用户信息
+     *
+     * @param email
+     * @return
+     */
+    SysUser getByMail(String email);
+
+    /**
      * 获取用户信息
      *
      * @return
