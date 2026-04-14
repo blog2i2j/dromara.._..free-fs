@@ -1,5 +1,206 @@
 # Free-Fs Change Log
 
+## V2.3.0 @2026-04-14
+
+### 🎉 重大更新
+
+这是一个重大版本更新，引入了工作空间和团队协作功能，让 Free FS 从个人网盘升级为企业级团队协作平台！
+
+### ✨ 新增功能
+
+#### 工作空间系统
+- 多工作空间支持，实现团队与个人文件隔离
+- 工作空间创建、管理、删除
+- 工作空间详情查询
+- 工作空间 slug 唯一性校验
+- 工作空间成员数量统计
+
+#### 团队协作
+- 成员邀请系统
+  - 邮件邀请功能
+  - 邀请链接生成
+  - 邀请令牌验证
+  - 邀请过期机制（默认 72 小时）
+  - 邀请状态管理（待接受、已接受、已过期、已取消）
+- 成员管理
+  - 成员列表查询（分页）
+  - 成员角色更新
+  - 成员移除
+  - 成员权限控制
+- 角色权限系统
+  - 角色创建与管理
+  - 角色权限分配
+  - 基于角色的访问控制（RBAC）
+
+#### 国际化支持
+- 完整的中英文双语支持
+- 可扩展的国际化框架
+- 前后端统一的国际化方案
+- 支持动态语言切换
+
+#### 认证增强
+- 邮箱验证码登录
+  - 验证码发送接口
+  - 验证码校验登录
+  - 支持用户名或邮箱登录
+- 邮件通知系统
+  - 验证码邮件模板
+  - 邀请邮件模板
+  - 异步邮件发送
+
+#### 邀请流程
+- 新用户注册自动加入工作空间
+  - 通过邀请令牌注册
+  - 自动验证邮箱匹配
+  - 自动创建成员关系
+- 已有用户直接加入
+  - 邮箱验证
+  - 一键接受邀请
+  - 自动更新成员数量
+
+### 🔧 技术改进
+
+#### 架构优化
+- 工作空间上下文管理
+  - ThreadLocal 存储当前工作空间
+  - 请求拦截器自动注入
+  - 请求结束自动清理
+- 工作空间 ID 传递
+  - 支持请求头传递（推荐）
+  - 支持请求参数传递（用于下载等场景）
+  - 优先级：请求头 > 请求参数
+
+#### 拦截器增强
+- WorkspaceInterceptor 工作空间拦截器
+  - 自动提取工作空间 ID
+  - 验证用户成员身份
+  - 白名单机制
+  - 支持双重获取方式
+
+#### 数据库优化
+- 新增表结构
+  - `sys_workspace` - 工作空间表
+  - `sys_workspace_member` - 工作空间成员表
+  - `sys_workspace_invitation` - 工作空间邀请表
+  - `sys_role` - 角色表
+- 索引优化
+  - 邀请令牌唯一索引
+  - 工作空间和邮箱组合索引
+  - 状态和过期时间组合索引
+
+#### 配置管理
+- 应用配置类 `AppProperties`
+  - 前端地址配置
+  - 支持环境变量覆盖
+- 安全配置更新
+  - 邀请接口公开访问
+  - 工作空间拦截器白名单
+
+### 🐛 Bug 修复
+
+- 修复邮箱验证码登录缺少实现的问题
+- 修复工作空间拦截器拦截邀请接口的问题
+- 修复 VO 转换器缺少字段映射的问题
+- 修复数据库缺少 `accepted_at` 字段的问题
+
+### 📝 文档更新
+
+- 新增工作空间使用指南
+- 新增邀请功能实现文档
+- 新增工作空间 ID 使用说明
+- 新增前端邀请功能实现指南
+- 新增快速修复指南
+- 新增部署检查清单
+- 更新 README 版本说明
+- 更新 API 接口文档
+
+### 🔄 API 变更
+
+#### 新增接口
+
+**工作空间管理**
+- `GET /apis/workspace/list` - 获取用户工作空间列表
+- `POST /apis/workspace` - 创建工作空间
+- `GET /apis/workspace/current` - 获取当前工作空间详情
+- `PUT /apis/workspace` - 更新工作空间信息
+- `DELETE /apis/workspace` - 删除工作空间
+- `GET /apis/workspace/check-slug` - 检查 slug 可用性
+
+**成员管理**
+- `GET /apis/workspace/members` - 分页查询工作空间成员
+- `PUT /apis/workspace/members/{userId}/role` - 更新成员角色
+- `DELETE /apis/workspace/members/{userId}` - 移除成员
+
+**邀请管理**
+- `GET /apis/workspace/invitations` - 获取邀请列表
+- `POST /apis/workspace/invitations` - 创建邀请
+- `DELETE /apis/workspace/invitations/{id}` - 取消邀请
+- `GET /apis/invitation/verify/{token}` - 验证邀请令牌（公开）
+- `POST /apis/invitation/accept` - 接受邀请
+
+**认证**
+- `POST /apis/auth/login/email-code` - 发送登录验证码
+
+#### 接口变更
+
+- 所有需要工作空间上下文的接口需要传递 `X-Workspace-Id`
+  - 请求头方式：`X-Workspace-Id: workspace-id`
+  - 请求参数方式：`?X-Workspace-Id=workspace-id`
+
+### 🗄️ 数据库迁移
+
+#### 必须执行的 SQL
+
+```sql
+-- 添加邀请表的 accepted_at 字段
+ALTER TABLE `sys_workspace_invitation` 
+ADD COLUMN `accepted_at` DATETIME NULL COMMENT '接受时间' AFTER `expires_at`;
+
+-- 创建索引（可选，优化性能）
+CREATE UNIQUE INDEX idx_invitation_token ON sys_workspace_invitation(token);
+CREATE INDEX idx_invitation_workspace_email ON sys_workspace_invitation(workspace_id, email);
+CREATE INDEX idx_invitation_status_expires ON sys_workspace_invitation(status, expires_at);
+```
+
+### ⚙️ 配置变更
+
+#### application.yml 新增配置
+
+```yaml
+# 应用配置
+app:
+  frontend:
+    url: http://localhost:3000  # 前端地址，用于生成邀请链接
+
+# 安全配置
+security:
+  excludes:
+    - /apis/invitation/verify/**  # 邀请验证接口
+```
+
+### 📦 依赖更新
+
+无重大依赖更新
+
+### ⚠️ 破坏性变更
+
+- **工作空间 ID 必传**：除白名单接口外，所有接口都需要传递工作空间 ID
+- **数据隔离**：文件、分享等数据现在按工作空间隔离
+- **权限变更**：基于工作空间的权限控制
+
+### 🔜 下一步计划
+
+- [ ] 工作空间配额管理
+- [ ] 工作空间模板
+- [ ] 更细粒度的权限控制
+- [ ] 工作空间统计报表
+- [ ] 审计日志
+- [ ] 工作空间转让
+- [ ] 批量邀请
+- [ ] 邀请链接短链
+
+---
+
 ## V2.2.1 @2026-03-25
 
 - 优化：简化LibreOffice内置包文件;
