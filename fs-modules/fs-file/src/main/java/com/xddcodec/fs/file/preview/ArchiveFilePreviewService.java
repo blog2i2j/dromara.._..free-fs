@@ -4,6 +4,7 @@ import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.framework.common.constant.RedisKey;
 import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
 import com.xddcodec.fs.framework.preview.config.FilePreviewConfig;
 import com.xddcodec.fs.framework.preview.core.PreviewContext;
 import com.xddcodec.fs.framework.preview.core.PreviewStrategy;
@@ -57,19 +58,22 @@ public class ArchiveFilePreviewService {
      */
     public String previewInnerFile(String archiveFileId, String innerPath, Model model) {
         if (!ArchiveUtil.isSafeArchiveInnerPath(innerPath)) {
-            return buildErrorPage(model, "路径无效", "非法的压缩包内路径");
+            return buildErrorPage(model, I18nUtils.getMessage("archive.path.invalid"), 
+                    I18nUtils.getMessage("archive.path.illegal"));
         }
 
         byte[] archiveBytes = getCachedInnerFile(archiveFileId);
         if (archiveBytes == null) {
             FileInfo archiveFile = fileInfoService.getById(archiveFileId);
             if (archiveFile == null) {
-                return buildErrorPage(model, "压缩包不存在", "压缩包文件不存在或已被删除");
+                return buildErrorPage(model, I18nUtils.getMessage("archive.not.exist"), 
+                        I18nUtils.getMessage("archive.file.not.exist.or.deleted"));
             }
             try {
                 archiveBytes = downloadFile(archiveFile.getId());
             } catch (Exception e) {
-                return buildErrorPage(model, "下载失败", "无法获取原始压缩包内容");
+                return buildErrorPage(model, I18nUtils.getMessage("archive.download.failed"), 
+                        I18nUtils.getMessage("archive.content.unavailable"));
             }
         }
 
@@ -78,14 +82,15 @@ public class ArchiveFilePreviewService {
             byte[] fileContent = extractFileFromBytes(archiveBytes, innerPath);
 
             if (fileContent == null) {
-                return buildErrorPage(model, "文件不存在", "压缩包中未找到指定文件");
+                return buildErrorPage(model, I18nUtils.getMessage("archive.file.not.found"), 
+                        I18nUtils.getMessage("archive.file.not.found.in.archive"));
             }
 
             Long maxFileSize = previewConfig.getMaxFileSize();
             if (maxFileSize != null && fileContent.length > maxFileSize) {
-                return buildErrorPage(model, "文件过大",
-                        String.format("文件大小超过预览限制（%dMB）",
-                                maxFileSize / 1024 / 1024));
+                return buildErrorPage(model, I18nUtils.getMessage("file.too.large"),
+                        I18nUtils.getMessage("file.size.limit.exceeded", 
+                                new Object[]{maxFileSize / 1024 / 1024}));
             }
 
             // 获取文件名
@@ -124,7 +129,7 @@ public class ArchiveFilePreviewService {
         } catch (Exception e) {
             log.error("提取压缩包内文件失败: archiveFileId={}, innerPath={}",
                     archiveFileId, innerPath, e);
-            return buildErrorPage(model, "提取文件失败", e.getMessage());
+            return buildErrorPage(model, I18nUtils.getMessage("archive.preview.failed"), e.getMessage());
         }
     }
 

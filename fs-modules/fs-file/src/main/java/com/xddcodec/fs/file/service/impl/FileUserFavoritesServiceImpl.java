@@ -6,7 +6,9 @@ import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.FileUserFavorites;
 import com.xddcodec.fs.file.mapper.FileUserFavoritesMapper;
 import com.xddcodec.fs.file.service.FileUserFavoritesService;
+import com.xddcodec.fs.framework.common.context.WorkspaceContext;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
@@ -41,19 +43,19 @@ public class FileUserFavoritesServiceImpl extends ServiceImpl<FileUserFavoritesM
     @Override
     public void favoritesFile(List<String> fileIds) {
         if (CollUtil.isEmpty(fileIds)) {
-            throw new BusinessException("收藏文件ID列表不能为空");
+            throw new BusinessException(I18nUtils.getMessage("file.favorites.empty"));
         }
         List<String> distinctFileIds = fileIds.stream().distinct().collect(Collectors.toList());
         String userId = StpUtil.getLoginIdAsString();
-        // 查询当前用户的文件
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         List<FileInfo> fileInfos = fileInfoService.list(
                 QueryWrapper.create()
                         .where(FILE_INFO.ID.in(distinctFileIds))
-                        .and(FILE_INFO.USER_ID.eq(userId))  // 限制只能收藏自己的文件
+                        .and(FILE_INFO.WORKSPACE_ID.eq(workspaceId))
                         .and(FILE_INFO.IS_DELETED.eq(false))
         );
         if (fileInfos.isEmpty()) {
-            throw new BusinessException("没有找到可收藏的文件或文件不属于您");
+            throw new BusinessException(I18nUtils.getMessage("file.favorites.not.found"));
         }
         // 查询已收藏的文件
         List<FileUserFavorites> existingFavorites = list(
@@ -69,6 +71,7 @@ public class FileUserFavoritesServiceImpl extends ServiceImpl<FileUserFavoritesM
                 .filter(fileInfo -> !existingFileIds.contains(fileInfo.getId()))
                 .map(fileInfo -> {
                     FileUserFavorites favoritesFile = new FileUserFavorites();
+                    favoritesFile.setWorkspaceId(workspaceId);
                     favoritesFile.setFileId(fileInfo.getId());
                     favoritesFile.setUserId(userId);
                     return favoritesFile;
@@ -135,15 +138,26 @@ public class FileUserFavoritesServiceImpl extends ServiceImpl<FileUserFavoritesM
     }
 
     @Override
+    public void removeByFileIds(Collection<String> fileIds) {
+        if (CollUtil.isEmpty(fileIds)) {
+            return;
+        }
+        this.remove(new QueryWrapper()
+                .where(FILE_USER_FAVORITES.FILE_ID.in(fileIds)));
+    }
+
+    @Override
     public Long getFavoritesCount() {
         String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         return this.count(new QueryWrapper()
                 .from(FILE_USER_FAVORITES)
                 .leftJoin(FILE_INFO).on(FILE_USER_FAVORITES.FILE_ID.eq(FILE_INFO.ID))
                 .where(FILE_USER_FAVORITES.USER_ID.eq(userId))
+                .and(FILE_USER_FAVORITES.WORKSPACE_ID.eq(workspaceId))
                 .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
-                .and(FILE_INFO.IS_DELETED.eq(false)) // 只统计未删除的文件
+                .and(FILE_INFO.IS_DELETED.eq(false))
         );
     }
 }

@@ -30,10 +30,6 @@
         </dependency>
         <dependency>
             <groupId>com.xddcodec.fs</groupId>
-            <artifactId>fs-plan</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.xddcodec.fs</groupId>
             <artifactId>fs-storage</artifactId>
         </dependency>
         <dependency>

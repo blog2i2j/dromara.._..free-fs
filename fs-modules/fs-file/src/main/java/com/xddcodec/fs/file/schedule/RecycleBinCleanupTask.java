@@ -5,6 +5,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.file.service.FileRecycleService;
+import com.xddcodec.fs.framework.common.context.WorkspaceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,6 +15,8 @@ import org.springframework.util.StopWatch;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.xddcodec.fs.file.domain.table.FileInfoTableDef.FILE_INFO;
 
@@ -32,10 +35,6 @@ public class RecycleBinCleanupTask {
     private final FileInfoService fileInfoService;
     private final FileRecycleService recycleService;
 
-    /**
-     * 定时清理回收站
-     * cron表达式：每天00:05执行
-     */
     @Scheduled(cron = "0 5 0 * * ?")
     @Transactional(rollbackFor = Exception.class)
     public void cleanupRecycleBin() {
@@ -43,27 +42,40 @@ public class RecycleBinCleanupTask {
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
         try {
-            // 查询需要清理的文件（删除超过7天）
             LocalDateTime expireTime = LocalDateTime.now().minusDays(7);
             List<FileInfo> expiredFiles = findExpiredFiles(expireTime);
             if (CollUtil.isEmpty(expiredFiles)) {
                 log.info("回收站无过期文件，任务结束");
                 return;
             }
-            List<String> fileIds = expiredFiles.stream().map(FileInfo::getId).toList();
-            log.info("查询到 {} 个过期文件，开始清理", fileIds.size());
-            recycleService.permanentlyDeleteFiles(fileIds);
+
+            Map<String, List<String>> filesByWorkspace = expiredFiles.stream()
+                    .collect(Collectors.groupingBy(
+                            FileInfo::getWorkspaceId,
+                            Collectors.mapping(FileInfo::getId, Collectors.toList())
+                    ));
+
+            int totalCleaned = 0;
+            for (Map.Entry<String, List<String>> entry : filesByWorkspace.entrySet()) {
+                try {
+                    WorkspaceContext.setWorkspaceId(entry.getKey());
+                    recycleService.permanentlyDeleteFiles(entry.getValue());
+                    totalCleaned += entry.getValue().size();
+                } catch (Exception e) {
+                    log.error("清理工作空间 {} 的过期文件失败", entry.getKey(), e);
+                } finally {
+                    WorkspaceContext.clear();
+                }
+            }
+
             stopWatch.stop();
-            log.info("回收站清理结束, 总计: {} 个, 耗时: {} ms", fileIds.size(), stopWatch.getTotalTimeMillis());
+            log.info("回收站清理结束, 总计: {} 个, 耗时: {} ms", totalCleaned, stopWatch.getTotalTimeMillis());
         } catch (Exception e) {
             log.error("回收站清理任务执行异常", e);
             throw e;
         }
     }
 
-    /**
-     * 查询过期文件
-     */
     private List<FileInfo> findExpiredFiles(LocalDateTime expireTime) {
         QueryWrapper queryWrapper = QueryWrapper.create()
                 .where(FILE_INFO.IS_DELETED.eq(true))

@@ -1,7 +1,6 @@
 package com.xddcodec.fs.system.domain.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 
 /**
@@ -29,4 +28,9 @@ public class UserRegisterCmd {
     private String nickname;
 
     private String avatar;
+
+    /**
+     * 邀请令牌（可选）
+     */
+    private String inviteToken;
 }

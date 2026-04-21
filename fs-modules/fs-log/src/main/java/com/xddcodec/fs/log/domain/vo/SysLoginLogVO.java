@@ -1,6 +1,7 @@
 package com.xddcodec.fs.log.domain.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.xddcodec.fs.framework.common.enums.LoginType;
 import com.xddcodec.fs.framework.common.utils.DateUtils;
 import com.xddcodec.fs.log.domain.SysLoginLog;
 import io.github.linpeilie.annotations.AutoMapper;
@@ -39,6 +40,9 @@ public class SysLoginLogVO implements Serializable {
 
     @Schema(description = "登录地址")
     private String loginAddress;
+
+    @Schema(description = "登录方式")
+    private LoginType loginType;
 
     @Schema(description = "浏览器")
     private String browser;

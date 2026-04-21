@@ -3,6 +3,7 @@ package com.xddcodec.fs.file.controller;
 import com.xddcodec.fs.file.preview.ArchiveFilePreviewService;
 import com.xddcodec.fs.framework.common.constant.RedisKey;
 import com.xddcodec.fs.framework.common.domain.Result;
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
 import com.xddcodec.fs.framework.redis.repository.RedisRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,8 +71,8 @@ public class ArchivePreviewController {
         
         // 验证 token
         if (previewToken == null || previewToken.isBlank()) {
-            model.addAttribute("errorMessage", "预览链接已失效");
-            model.addAttribute("errorDetail", "缺少预览 token，请重新打开");
+            model.addAttribute("errorMessage", I18nUtils.getMessage("preview.link.expired"));
+            model.addAttribute("errorDetail", I18nUtils.getMessage("preview.token.missing"));
             return "preview/error";
         }
         
@@ -79,8 +80,8 @@ public class ArchivePreviewController {
         Object cached = redisRepository.get(tokenKey);
         
         if (cached == null) {
-            model.addAttribute("errorMessage", "预览链接已失效");
-            model.addAttribute("errorDetail", "为了您的文件安全，请刷新后重试");
+            model.addAttribute("errorMessage", I18nUtils.getMessage("preview.link.expired"));
+            model.addAttribute("errorDetail", I18nUtils.getMessage("preview.token.security"));
             return "preview/error";
         }
         
@@ -90,8 +91,8 @@ public class ArchivePreviewController {
         
         if (!expectedValue.equals(cacheValue)) {
             log.warn("Token 验证失败: expected={}, actual={}", expectedValue, cacheValue);
-            model.addAttribute("errorMessage", "预览链接无效");
-            model.addAttribute("errorDetail", "Token 验证失败，请重新打开");
+            model.addAttribute("errorMessage", I18nUtils.getMessage("preview.link.invalid"));
+            model.addAttribute("errorDetail", I18nUtils.getMessage("preview.token.verify.failed"));
             return "preview/error";
         }
         
@@ -103,7 +104,7 @@ public class ArchivePreviewController {
         } catch (Exception e) {
             log.error("预览压缩包内文件失败: archiveFileId={}, innerPath={}", 
                     archiveFileId, innerPath, e);
-            model.addAttribute("errorMessage", "预览失败");
+            model.addAttribute("errorMessage", I18nUtils.getMessage("preview.failed"));
             model.addAttribute("errorDetail", e.getMessage());
             return "preview/error";
         }

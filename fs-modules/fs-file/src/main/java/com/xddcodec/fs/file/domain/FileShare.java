@@ -4,7 +4,6 @@ import com.mybatisflex.annotation.Id;
 import com.mybatisflex.annotation.KeyType;
 import com.mybatisflex.annotation.Table;
 import com.mybatisflex.core.keygen.KeyGenerators;
-import com.xddcodec.fs.file.enums.FileShareScope;
 import com.xddcodec.fs.framework.orm.entity.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -29,6 +28,11 @@ public class FileShare extends BaseEntity {
      * 分享人ID
      */
     private String userId;
+
+    /**
+     * 所属工作空间ID
+     */
+    private String workspaceId;
 
     /**
      * 分享名称（默认取第一个文件名）

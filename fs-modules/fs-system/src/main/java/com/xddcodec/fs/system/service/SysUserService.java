@@ -4,6 +4,7 @@ import com.xddcodec.fs.system.domain.SysUser;
 import com.xddcodec.fs.system.domain.dto.*;
 import com.xddcodec.fs.system.domain.vo.SysUserVO;
 import com.mybatisflex.core.service.IService;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 用户服务接口
@@ -20,6 +21,14 @@ public interface SysUserService extends IService<SysUser> {
      * @return
      */
     SysUser getByUsername(String username);
+
+    /**
+     * 根据邮箱获取用户信息
+     *
+     * @param email
+     * @return
+     */
+    SysUser getByMail(String email);
 
     /**
      * 获取用户信息
@@ -44,12 +53,42 @@ public interface SysUserService extends IService<SysUser> {
     void editUserInfo(UserEditInfoCmd cmd);
 
     /**
+     * 修改邮箱-发送邮箱验证码
+     *
+     * @param mail
+     */
+    void sendUpdateMailCode(String mail);
+
+    /**
+     * 修改邮箱-验证邮箱验证码
+     *
+     * @param cmd
+     */
+    void updateMail(UserEditMailCmd cmd);
+
+    /**
+     * 上传头像
+     *
+     * @param file
+     * @return
+     */
+    void uploadAvatar(MultipartFile file);
+
+    /**
      * 修改密码
      *
      * @param cmd
      * @return
      */
     void updatePassword(PasswordEditCmd cmd);
+
+    /**
+     * 设置密码
+     *
+     * @param cmd
+     * @return
+     */
+    void setPassword(PasswordAddCmd cmd);
 
 
     /**

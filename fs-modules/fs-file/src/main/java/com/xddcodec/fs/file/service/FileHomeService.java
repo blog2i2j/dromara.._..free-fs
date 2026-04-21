@@ -1,10 +1,7 @@
 package com.xddcodec.fs.file.service;
 
 import com.xddcodec.fs.file.domain.qry.FileHomeUsedBytesQry;
-import com.xddcodec.fs.file.domain.vo.FileHomeUsedBytesVO;
 import com.xddcodec.fs.file.domain.vo.FileHomeVO;
-
-import java.util.List;
 
 public interface FileHomeService {
 

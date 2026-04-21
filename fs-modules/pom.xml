@@ -18,7 +18,6 @@
         <module>fs-storage</module>
         <module>fs-system</module>
         <module>fs-log</module>
-        <module>fs-plan</module>
         <module>fs-file</module>
     </modules>
 </project>

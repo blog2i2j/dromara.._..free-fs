@@ -1,10 +1,12 @@
 package com.xddcodec.fs.system.aspect;
 
+import com.xddcodec.fs.framework.common.enums.LoginType;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.utils.Ip2RegionUtils;
 import com.xddcodec.fs.framework.common.utils.IpUtils;
 import com.xddcodec.fs.log.domain.event.CreateLoginLogEvent;
-import com.xddcodec.fs.system.domain.vo.LoginUserVO;
+import com.xddcodec.fs.system.domain.dto.LoginCmd;
+import com.xddcodec.fs.system.domain.vo.LoginResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -37,14 +39,22 @@ public class LoginLogAspect {
 
     @Around("loginLogPointcut()")
     public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
+        Object[] args = joinPoint.getArgs();
+        LoginCmd cmd = null;
+        if (args != null && args.length > 0 && args[0] instanceof LoginCmd) {
+            cmd = (LoginCmd) args[0];
+        }
+
         // 获取登录相关信息
         String ip = IpUtils.getIpAddr();
         String address = Ip2RegionUtils.search(ip);
         String browser = IpUtils.getBrowser();
         String os = IpUtils.getOs();
         String userAgent = IpUtils.getUserAgent();
-        // 获取用户名
-        String username = extractUsername(joinPoint);
+
+        // 获取用户名和登陆方式
+        String username = (cmd != null) ? cmd.getAccount() : "unknown";
+        LoginType loginType = (cmd != null) ? cmd.getLoginType() : LoginType.password;
 
         long startTime = System.currentTimeMillis();
 
@@ -53,13 +63,13 @@ public class LoginLogAspect {
             Object result = joinPoint.proceed();
 
             // 登录成功，从返回值中提取用户信息
-            if (result instanceof LoginUserVO loginUserVO) {
-                String userId = loginUserVO.getId() != null ? loginUserVO.getId() : null;
-                String actualUsername = loginUserVO.getUsername() != null ? loginUserVO.getUsername() : username;
+            if (result instanceof LoginResult loginResult) {
+                String userId = loginResult.getId() != null ? loginResult.getId() : null;
+                String actualUsername = loginResult.getUsername() != null ? loginResult.getUsername() : username;
 
                 // 发布登录成功事件
                 eventPublisher.publishEvent(
-                        CreateLoginLogEvent.success(this, userId, actualUsername, ip, address, browser, os, userAgent)
+                        CreateLoginLogEvent.success(this, userId, actualUsername, ip, address, loginType, browser, os, userAgent)
                 );
 
                 long endTime = System.currentTimeMillis();
@@ -70,7 +80,7 @@ public class LoginLogAspect {
 
         } catch (Exception e) {
             // 系统异常
-            publishFailureEvent(username, ip, address, browser, os, userAgent, e.getMessage());
+            publishFailureEvent(username, ip, address, loginType, browser, os, userAgent, e.getMessage());
 
             long endTime = System.currentTimeMillis();
             log.error("登录异常: 用户[{}], IP[{}], 耗时[{}ms]",
@@ -81,32 +91,12 @@ public class LoginLogAspect {
     }
 
     /**
-     * 从方法参数中提取用户名
-     */
-    private String extractUsername(ProceedingJoinPoint joinPoint) {
-        Object[] args = joinPoint.getArgs();
-        if (args != null && args.length > 0) {
-            Object firstArg = args[0];
-            if (firstArg != null) {
-                try {
-                    Method getUsernameMethod = firstArg.getClass().getMethod("getUsername");
-                    Object username = getUsernameMethod.invoke(firstArg);
-                    return username != null ? username.toString() : "unknown";
-                } catch (Exception e) {
-                    log.debug("无法从参数中提取用户名", e);
-                }
-            }
-        }
-        return "unknown";
-    }
-
-    /**
      * 发布登录失败事件
      */
-    private void publishFailureEvent(String username, String ip, String address,
+    private void publishFailureEvent(String username, String ip, String address, LoginType loginType,
                                      String browser, String os, String userAgent, String message) {
         eventPublisher.publishEvent(
-                CreateLoginLogEvent.failure(this, username, ip, address, browser, os, message, userAgent)
+                CreateLoginLogEvent.failure(this, username, ip, address, loginType, browser, os, message, userAgent)
         );
     }
 }

@@ -14,7 +14,6 @@ import com.xddcodec.fs.file.domain.dto.CreateFileShareAccessRecordCmd;
 import com.xddcodec.fs.file.domain.dto.CreateShareCmd;
 import com.xddcodec.fs.file.domain.dto.VerifyShareCodeCmd;
 import com.xddcodec.fs.file.domain.event.CreateFileShareAccessRecordEvent;
-import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.qry.FileShareQry;
 import com.xddcodec.fs.file.domain.vo.FileDownloadVO;
 import com.xddcodec.fs.file.domain.vo.FileShareThinVO;
@@ -24,8 +23,10 @@ import com.xddcodec.fs.file.mapper.FileShareMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.file.service.FileShareItemService;
 import com.xddcodec.fs.file.service.FileShareService;
+import com.xddcodec.fs.framework.common.context.WorkspaceContext;
 import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
 import com.xddcodec.fs.framework.common.utils.Ip2RegionUtils;
 import com.xddcodec.fs.framework.common.utils.IpUtils;
 import com.xddcodec.fs.framework.common.utils.StringUtils;
@@ -70,14 +71,14 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
 
     @Override
     public PageResult<FileShareVO> getPages(FileShareQry qry) {
-        String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         int page = qry.getPage() == null ? 1 : qry.getPage();
         int pageSize = qry.getPageSize() == null ? 10 : qry.getPageSize();
 
         Page<FileShare> p = new Page<>(page, pageSize);
 
         QueryWrapper wrapper = new QueryWrapper();
-        wrapper.where(FILE_SHARE.USER_ID.eq(userId));
+        wrapper.where(FILE_SHARE.WORKSPACE_ID.eq(workspaceId));
 
         if (StringUtils.isNotEmpty(qry.getKeyword())) {
             String keyword = "%" + qry.getKeyword().trim() + "%";
@@ -102,7 +103,7 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
     public FileShareVO getDetail(String shareId) {
         FileShare share = this.getById(shareId);
         if (share == null) {
-            throw new BusinessException("该分享不存在");
+            throw new BusinessException(I18nUtils.getMessage("share.not.exist"));
         }
         return buildShareVO(share);
     }
@@ -124,8 +125,10 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
     @Transactional(rollbackFor = Exception.class)
     public FileShareVO createShare(CreateShareCmd cmd) {
         String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         FileShare share = new FileShare();
         share.setUserId(userId);
+        share.setWorkspaceId(workspaceId);
         share.setViewCount(0);
         share.setDownloadCount(0);
 
@@ -214,8 +217,8 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void cancelAllShares() {
-        String userId = StpUtil.getLoginIdAsString();
-        List<FileShare> shareIds = this.list(new QueryWrapper().where(FILE_SHARE.USER_ID.eq(userId)));
+        String workspaceId = WorkspaceContext.getWorkspaceId();
+        List<FileShare> shareIds = this.list(new QueryWrapper().where(FILE_SHARE.WORKSPACE_ID.eq(workspaceId)));
         List<String> shareIdList = shareIds.stream().map(FileShare::getId).toList();
         this.cancelShares(shareIdList);
     }
@@ -230,11 +233,11 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
         }
         FileShareVO share = this.getDetail(cmd.getShareId());
         if (share == null) {
-            throw new BusinessException("该分享不存在");
+            throw new BusinessException(I18nUtils.getMessage("share.not.exist"));
         }
 
         if (!share.getShareCode().equals(cmd.getShareCode())) {
-            throw new BusinessException("提取码不正确");
+            throw new BusinessException(I18nUtils.getMessage("share.code.incorrect"));
         }
         return true;
     }
@@ -243,7 +246,7 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
     public FileShareThinVO getFileShareThinVO(String shareId) {
         FileShare fileShare = this.getById(shareId);
         if (fileShare == null) {
-            throw new BusinessException("该分享不存在");
+            throw new BusinessException(I18nUtils.getMessage("share.not.exist"));
         }
         FileShareThinVO vo = converter.convert(fileShare, FileShareThinVO.class);
         vo.setHasCheckCode(StringUtils.isNotEmpty(fileShare.getShareCode()));
@@ -265,7 +268,7 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
     public List<FileVO> getShareFileItems(String shareId, String parentId) {
         FileShare fileShare = this.getById(shareId);
         if (fileShare == null) {
-            throw new BusinessException("该分享不存在或已删除");
+            throw new BusinessException(I18nUtils.getMessage("share.not.exist.or.deleted"));
         }
 //        if (StringUtils.isNotEmpty(parentId)) {
 //            // 若有父文件ID参数, 则需要查询子数据集
@@ -288,18 +291,18 @@ public class FileShareServiceImpl extends ServiceImpl<FileShareMapper, FileShare
     public FileDownloadVO downloadFiles(String shareId, String fileId) {
         //判断是否分享内文件
         if (!fileShareItemService.isFileInShare(shareId, fileId)) {
-            throw new BusinessException("下载失败，该文件不在当前分享内");
+            throw new BusinessException(I18nUtils.getMessage("share.file.not.in.share"));
         }
         FileInfo fileInfo = fileInfoService.getById(fileId);
         //判断是否文件夹
         if (fileInfo == null) {
-            throw new BusinessException("下载失败，该文件不存在");
+            throw new BusinessException(I18nUtils.getMessage("file.download.failed.not.exist"));
         }
 
         IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
 
         if (!storageService.isFileExist(fileInfo.getObjectKey())) {
-            throw new BusinessException("下载失败，该文件不存在");
+            throw new BusinessException(I18nUtils.getMessage("file.download.failed.not.exist"));
         }
 
         InputStream inputStream = storageService.downloadFile(fileInfo.getObjectKey());

@@ -46,8 +46,9 @@ public class Mail {
     /**
      * 构建验证码邮件
      *
-     * @param recipient
-     * @param code
+     * @param recipient 收件人
+     * @param name      收件人名称
+     * @param code      验证码
      * @return
      */
     public static Mail buildVerifyCodeMail(String recipient, String name, String code) {
@@ -59,6 +60,30 @@ public class Mail {
                 .recipient(recipient)
                 .params(params)
                 .htmlTemplate(MailTemplateConstant.VERIFICATION_CODE_TEMPLATE)
+                .build();
+    }
+
+    /**
+     * 构建空间成员邀请通知邮件
+     *
+     * @param recipient     收件人
+     * @param inviterName   邀请人名称
+     * @param workspaceName 空间名称
+     * @param roleName      角色名称
+     * @param inviteUrl     邀请链接
+     * @return
+     */
+    public static Mail buildWorkspaceMemberInviteMail(String recipient, String inviterName, String workspaceName, String roleName, String inviteUrl) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("inviterName", inviterName);
+        params.put("workspaceName", workspaceName);
+        params.put("roleName", roleName);
+        params.put("inviteUrl", inviteUrl);
+        return Mail.builder()
+                .subject("空间成员邀请通知")
+                .recipient(recipient)
+                .params(params)
+                .htmlTemplate(MailTemplateConstant.WORKSPACE_MEMBER_INVITE_TEMPLATE)
                 .build();
     }
 }

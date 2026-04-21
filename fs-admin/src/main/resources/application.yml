@@ -35,16 +35,20 @@ spring:
   threads:
     virtual:
       enabled: true
+  # 国际化支持
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
   # 模版引擎配置
-#  thymeleaf:
-#    mode: LEGACYHTML5
-#    prefix: classpath:/templates/
-#    encoding: UTF-8
+  #  thymeleaf:
+  #    mode: LEGACYHTML5
+  #    prefix: classpath:/templates/
+  #    encoding: UTF-8
 
   # 邮件配置
   mail:
     # 开关
-    enable: false
+    enable: true
     #smtp服务主机  qq邮箱则为smtp.qq.com
     host: smtp.qq.com
     #编码集
@@ -53,7 +57,7 @@ spring:
     username: dh_freedom@qq.com
     form: Free-Fs <dh_freedom@qq.com>
     #授权码
-    password: xxxxxx
+    password: xxxxxxxxxxxx
     properties:
       mail:
         smtp:
@@ -112,9 +116,11 @@ security:
   #排除不需要登录认证的接口
   excludes:
     - /apis/auth/login
+    - /apis/auth/login/**
     - /apis/user/register
     - /apis/user/forget-password/code/**
     - /apis/user/forget-password
+    - /apis/invitation/verify/**
     - /apis/share/**/items
     - /apis/share/verify/code
     - /apis/share/**/info

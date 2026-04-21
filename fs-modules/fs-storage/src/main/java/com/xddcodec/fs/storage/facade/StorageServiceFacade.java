@@ -1,8 +1,10 @@
 package com.xddcodec.fs.storage.facade;
 
 import cn.hutool.core.util.StrUtil;
+import com.xddcodec.fs.framework.common.context.WorkspaceContext;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageConfigException;
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
 import com.xddcodec.fs.storage.domain.StorageSetting;
 import com.xddcodec.fs.storage.mapper.StorageSettingMapper;
 import com.xddcodec.fs.storage.plugin.boot.StoragePluginManager;
@@ -124,13 +126,17 @@ public class StorageServiceFacade {
 
         // 配置验证
         if (settings == null) {
-            throw new BusinessException("未找到存储配置: " + configId);
+            throw new BusinessException(I18nUtils.getMessage("storage.config.not.found", new Object[]{configId}));
         }
         if (settings.getDeleted() == 1) {
-            throw new BusinessException("存储配置已删除: " + configId);
+            throw new BusinessException(I18nUtils.getMessage("storage.config.deleted", new Object[]{configId}));
         }
         if (settings.getEnabled() == 0) {
-            throw new BusinessException("存储配置已禁用: " + configId);
+            throw new BusinessException(I18nUtils.getMessage("storage.config.disabled", new Object[]{configId}));
+        }
+        String workspaceId = WorkspaceContext.getWorkspaceId();
+        if (workspaceId != null && !workspaceId.equals(settings.getWorkspaceId())) {
+            throw new BusinessException(I18nUtils.getMessage("storage.config.no.permission"));
         }
 
         // 构建配置对象
@@ -150,7 +156,7 @@ public class StorageServiceFacade {
         try {
             if (StrUtil.isBlank(setting.getConfigData())) {
                 throw new StorageConfigException(
-                        String.format("存储平台配置错误：配置数据为空, configId=%s", setting.getId())
+                        I18nUtils.getMessage("storage.config.data.empty", new Object[]{setting.getId()})
                 );
             }
 
@@ -167,8 +173,8 @@ public class StorageServiceFacade {
             log.error("配置数据解析失败: configId={}, error={}",
                     setting.getId(), e.getMessage(), e);
             throw new StorageConfigException(
-                    String.format("存储平台配置错误：配置数据解析失败, configId=%s, error=%s",
-                            setting.getId(), e.getMessage()),
+                    I18nUtils.getMessage("storage.config.data.parse.failed", 
+                            new Object[]{setting.getId(), e.getMessage()}),
                     e
             );
         }
@@ -176,7 +182,7 @@ public class StorageServiceFacade {
         return StorageConfig.builder()
                 .configId(setting.getId())
                 .platformIdentifier(setting.getPlatformIdentifier())
-                .userId(setting.getUserId())
+                .workspaceId(setting.getWorkspaceId())
                 .properties(properties)
                 .enabled(setting.getEnabled() != null && setting.getEnabled() == 1)
                 .remark(setting.getRemark())

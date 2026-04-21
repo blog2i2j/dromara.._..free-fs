@@ -53,6 +53,7 @@ public class LoginEventListener {
         loginLog.setUsername(event.getUsername());
         loginLog.setLoginIp(event.getLoginIp());
         loginLog.setLoginAddress(event.getLoginAddress());
+        loginLog.setLoginType(event.getLoginType());
         loginLog.setBrowser(event.getBrowser());
         loginLog.setOs(event.getOs());
         loginLog.setStatus(event.getStatus());

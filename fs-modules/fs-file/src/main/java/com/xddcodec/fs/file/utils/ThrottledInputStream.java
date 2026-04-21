@@ -1,5 +1,7 @@
 package com.xddcodec.fs.file.utils;
 
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -72,7 +74,7 @@ public class ThrottledInputStream extends InputStream {
                 Thread.sleep(sleepTime);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                throw new IOException("限速被中断", e);
+                throw new IOException(I18nUtils.getMessage("transfer.throttle.interrupted"), e);
             }
         }
     }

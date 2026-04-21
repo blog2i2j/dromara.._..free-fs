@@ -136,6 +136,6 @@ public abstract class AbstractStorageOperationService implements IStorageOperati
         if (config == null) {
             return "[Prototype]";
         }
-        return String.format("[%s|%s]", config.getUserId(), config.getPlatformIdentifier());
+        return String.format("[%s|%s]", config.getWorkspaceId(), config.getPlatformIdentifier());
     }
 }

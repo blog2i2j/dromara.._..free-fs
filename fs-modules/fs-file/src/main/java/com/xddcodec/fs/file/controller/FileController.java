@@ -1,5 +1,6 @@
 package com.xddcodec.fs.file.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.domain.dto.CreateDirectoryCmd;
 import com.xddcodec.fs.file.domain.dto.MoveFileCmd;
@@ -7,7 +8,6 @@ import com.xddcodec.fs.file.domain.dto.RenameFileCmd;
 import com.xddcodec.fs.file.domain.qry.FileQry;
 import com.xddcodec.fs.file.domain.qry.FileRecycleQry;
 import com.xddcodec.fs.file.domain.vo.FileDetailVO;
-import com.xddcodec.fs.file.domain.vo.FileRecycleVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.file.service.FileRecycleService;
@@ -78,6 +78,7 @@ public class FileController {
 
     @DeleteMapping()
     @Operation(summary = "移到回收站", description = "将文件移动到回收站")
+    @SaCheckPermission("file:write")
     public Result<?> deleteFiles(@RequestBody List<String> fileIds) {
         fileInfoService.moveFilesToRecycleBin(fileIds);
         return Result.ok();
@@ -85,6 +86,7 @@ public class FileController {
 
     @PostMapping("/directory")
     @Operation(summary = "创建目录", description = "在指定目录下创建新目录")
+    @SaCheckPermission("file:write")
     public Result<FileInfo> createDirectory(@RequestBody @Validated CreateDirectoryCmd cmd) {
         FileInfo fileInfo = fileInfoService.createDirectory(cmd);
         return Result.ok(fileInfo);
@@ -92,6 +94,7 @@ public class FileController {
 
     @PutMapping("/{fileId}/rename")
     @Operation(summary = "文件重命名", description = "文件重命名")
+    @SaCheckPermission("file:write")
     public Result<?> createDirectory(@PathVariable String fileId, @RequestBody @Validated RenameFileCmd cmd) {
         fileInfoService.renameFile(fileId, cmd);
         return Result.ok();
@@ -99,6 +102,7 @@ public class FileController {
 
     @PutMapping("/moves")
     @Operation(summary = "文件移动", description = "文件移动")
+    @SaCheckPermission("file:write")
     public Result<?> createDirectory(@RequestBody @Validated MoveFileCmd cmd) {
         fileInfoService.moveFile(cmd);
         return Result.ok();
@@ -119,6 +123,7 @@ public class FileController {
 
     @PutMapping("/recycles")
     @Operation(summary = "恢复文件", description = "从回收站批量恢复文件")
+    @SaCheckPermission("file:write")
     public Result<?> restoreFile(@RequestBody List<String> fileIds) {
         fileRecycleService.restoreFiles(fileIds);
         return Result.ok();
@@ -126,6 +131,7 @@ public class FileController {
 
     @DeleteMapping("/recycles")
     @Operation(summary = "永久删除文件", description = "永久删除文件，不可恢复")
+    @SaCheckPermission("file:write")
     public Result<?> permanentlyDeleteFiles(@RequestBody List<String> fileIds) {
         fileRecycleService.permanentlyDeleteFiles(fileIds);
         return Result.ok();
@@ -133,6 +139,7 @@ public class FileController {
 
     @DeleteMapping("/recycles/clear")
     @Operation(summary = "清空回收站", description = "清空回收站，永久删除所有文件")
+    @SaCheckPermission("file:write")
     public Result<?> clearRecycles() {
         fileRecycleService.clearRecycles();
         return Result.ok();
@@ -140,6 +147,7 @@ public class FileController {
 
     @PostMapping("/favorites")
     @Operation(summary = "收藏文件", description = "收藏文件")
+    @SaCheckPermission("file:write")
     public Result<?> favoritesFile(@RequestBody List<String> fileIds) {
         fileUserFavoritesService.favoritesFile(fileIds);
         return Result.ok();
@@ -147,6 +155,7 @@ public class FileController {
 
     @DeleteMapping("/favorites")
     @Operation(summary = "取消收藏文件", description = "取消收藏文件")
+    @SaCheckPermission("file:write")
     public Result<?> unFavoritesFile(@RequestBody List<String> fileIds) {
         fileUserFavoritesService.unFavoritesFile(fileIds);
         return Result.ok();
