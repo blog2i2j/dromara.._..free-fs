@@ -77,11 +77,6 @@
             </dependency>
             <dependency>
                 <groupId>com.xddcodec.fs</groupId>
-                <artifactId>fs-plan</artifactId>
-                <version>${revision}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.xddcodec.fs</groupId>
                 <artifactId>fs-log</artifactId>
                 <version>${revision}</version>
             </dependency>

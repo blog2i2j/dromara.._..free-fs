@@ -68,7 +68,7 @@ public interface FileInfoService extends IService<FileInfo> {
      * @param storagePlatformSettingId 存储平台设置ID
      * @return 唯一的文件名
      */
-    String generateUniqueName(String userId, String parentId,
+    String generateUniqueName(String workspaceId, String parentId,
                               String desiredName, Boolean isDir,
                               String excludeFileId, String storagePlatformSettingId);
 

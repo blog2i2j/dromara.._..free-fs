@@ -19,8 +19,10 @@ import com.xddcodec.fs.file.mapper.FileInfoMapper;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
+import com.xddcodec.fs.framework.common.context.WorkspaceContext;
 import com.xddcodec.fs.framework.common.exception.BusinessException;
 import com.xddcodec.fs.framework.common.exception.StorageOperationException;
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
 import com.xddcodec.fs.framework.common.utils.StringUtils;
 import com.xddcodec.fs.storage.plugin.core.IStorageOperationService;
 import com.mybatisflex.core.query.QueryWrapper;
@@ -63,13 +65,13 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     public InputStream downloadFile(String fileId) {
         FileInfo fileInfo = getById(fileId);
         if (fileInfo == null) {
-            throw new StorageOperationException("文件不存在: " + fileId);
+            throw new StorageOperationException(I18nUtils.getMessage("file.not.exist", new Object[]{fileId}));
         }
         if (fileInfo.getIsDir()) {
-            throw new StorageOperationException("不能下载目录: " + fileId);
+            throw new StorageOperationException(I18nUtils.getMessage("file.cannot.download.dir", new Object[]{fileId}));
         }
         if (fileInfo.getIsDeleted()) {
-            throw new StorageOperationException("文件已被删除: " + fileId);
+            throw new StorageOperationException(I18nUtils.getMessage("file.deleted", new Object[]{fileId}));
         }
 
         // 根据文件记录中的 storagePlatformSettingId 获取对应的存储服务
@@ -77,13 +79,9 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
             IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
             return storageService.downloadFile(fileInfo.getObjectKey());
         } catch (StorageOperationException e) {
-            // 统一转换为友好的业务异常消息
-            log.error("从存储平台下载文件失败: {}", e.getMessage(), e);
-            String friendlyMessage = e.getMessage().toLowerCase().contains("文件不存在") ||
-                    e.getMessage().toLowerCase().contains("nosuchkey")
-                    ? "文件不存在或已被删除"
-                    : "文件下载失败，请重试";
-            throw new StorageOperationException(friendlyMessage);
+            // 直接抛出原始异常，让上层统一处理
+            log.error("从存储平台下载文件失败: fileId={}, objectKey={}", fileId, fileInfo.getObjectKey(), e);
+            throw e;
         }
     }
 
@@ -91,17 +89,17 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     public String getFileUrl(String fileId, Integer expireSeconds) {
         FileInfo fileInfo = getById(fileId);
         if (fileInfo == null) {
-            throw new StorageOperationException("文件不存在: " + fileId);
+            throw new StorageOperationException(I18nUtils.getMessage("file.not.exist", new Object[]{fileId}));
         }
         if (fileInfo.getIsDir()) {
-            throw new StorageOperationException("目录没有访问URL: " + fileId);
+            throw new StorageOperationException(I18nUtils.getMessage("file.dir.no.url", new Object[]{fileId}));
         }
         if (fileInfo.getIsDeleted()) {
-            throw new StorageOperationException("文件已被删除: " + fileId);
+            throw new StorageOperationException(I18nUtils.getMessage("file.deleted", new Object[]{fileId}));
         }
         IStorageOperationService storageService = storageServiceFacade.getStorageService(fileInfo.getStoragePlatformSettingId());
         if (!storageService.isFileExist(fileInfo.getObjectKey())) {
-            throw new StorageOperationException("文件不存在: " + fileId);
+            throw new StorageOperationException(I18nUtils.getMessage("file.not.exist", new Object[]{fileId}));
         }
         return storageService.getFileUrl(fileInfo.getObjectKey(), expireSeconds);
     }
@@ -184,26 +182,26 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public FileInfo createDirectory(CreateDirectoryCmd cmd) {
-        // 生成目录ID
         String folderId = IdUtil.fastSimpleUUID();
         String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         String platformConfigId = StoragePlatformContextHolder.getConfigId();
         String baseName = cmd.getFolderName().trim();
         String finalName = generateUniqueName(
-                userId,
+                workspaceId,
                 cmd.getParentId(),
                 baseName,
                 true,
                 null,
                 platformConfigId
         );
-        // 创建目录信息记录
         FileInfo dirInfo = new FileInfo();
         dirInfo.setId(folderId);
         dirInfo.setOriginalName(finalName);
         dirInfo.setDisplayName(finalName);
         dirInfo.setIsDir(true);
         dirInfo.setParentId(cmd.getParentId());
+        dirInfo.setWorkspaceId(workspaceId);
         dirInfo.setUserId(userId);
         dirInfo.setStoragePlatformSettingId(platformConfigId);
         LocalDateTime now = LocalDateTime.now();
@@ -219,22 +217,20 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     public void renameFile(String fileId, RenameFileCmd cmd) {
         FileInfo fileInfo = getById(fileId);
         if (fileInfo == null) {
-            throw new StorageOperationException("文件不存在: " + fileId);
+            throw new StorageOperationException(I18nUtils.getMessage("file.not.exist", new Object[]{fileId}));
         }
         if (fileInfo.getDisplayName().equals(cmd.getDisplayName())) {
             return;
         }
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         String newName = cmd.getDisplayName().trim();
-        //判断同目录下是否有重名
         String finalName = generateUniqueName(
-                fileInfo.getUserId(),
+                fileInfo.getWorkspaceId(),
                 fileInfo.getParentId(),
                 newName,
                 fileInfo.getIsDir(),
                 fileId,
                 storagePlatformSettingId
-
         );
         fileInfo.setDisplayName(finalName);
         LocalDateTime now = LocalDateTime.now();
@@ -247,7 +243,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Transactional(rollbackFor = Exception.class)
     public void moveFile(MoveFileCmd cmd) {
         if (CollUtil.isEmpty(cmd.getFileIds())) {
-            throw new BusinessException("文件ID列表不能为空");
+            throw new BusinessException(I18nUtils.getMessage("file.id.list.empty"));
         }
 
         String targetDirId = StringUtils.isBlank(cmd.getDirId()) ? null : cmd.getDirId();
@@ -255,7 +251,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (targetDirId != null) {
             FileInfo dirInfo = getById(targetDirId);
             if (dirInfo == null || !dirInfo.getIsDir()) {
-                throw new BusinessException("目标目录不存在或非法");
+                throw new BusinessException(I18nUtils.getMessage("file.target.dir.invalid"));
             }
         }
 
@@ -269,12 +265,13 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
             if (targetDirId != null && fileInfo.getIsDir()) {
                 if (fileInfo.getId().equals(targetDirId) || isSubDirectory(fileInfo.getId(), targetDirId)) {
-                    throw new BusinessException("不能将目录 [" + fileInfo.getDisplayName() + "] 移动到自身或子目录下");
+                    throw new BusinessException(I18nUtils.getMessage("file.cannot.move.to.self", 
+                            new Object[]{fileInfo.getDisplayName()}));
                 }
             }
 
             String finalName = generateUniqueName(
-                    fileInfo.getUserId(),
+                    fileInfo.getWorkspaceId(),
                     targetDirId,
                     fileInfo.getDisplayName(),
                     fileInfo.getIsDir(),
@@ -312,7 +309,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
      * - 如果不存在重名：返回原名称
      * - 如果存在重名：自动添加 (1), (2), (3)... 后缀
      *
-     * @param userId        用户ID
+     * @param workspaceId   工作空间ID
      * @param parentId      父目录ID
      * @param desiredName   期望的文件名
      * @param isDir         是否是文件夹
@@ -320,7 +317,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
      * @return 唯一的文件名
      */
     @Override
-    public String generateUniqueName(String userId, String parentId,
+    public String generateUniqueName(String workspaceId, String parentId,
                                      String desiredName, Boolean isDir,
                                      String excludeFileId, String storagePlatformSettingId) {
 
@@ -329,10 +326,10 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
         if (!isDir && desiredName.contains(".")) {
             int lastDotIndex = desiredName.lastIndexOf(".");
             nameWithoutExt = desiredName.substring(0, lastDotIndex);
-            extension = desiredName.substring(lastDotIndex); // 包含点号
+            extension = desiredName.substring(lastDotIndex);
         }
         QueryWrapper query = buildSameLevelQuery(
-                userId,
+                workspaceId,
                 parentId,
                 nameWithoutExt,
                 isDir,
@@ -357,12 +354,12 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     /**
      * 构建查询同级目录下同类型文件的条件
      */
-    private QueryWrapper buildSameLevelQuery(String userId, String parentId,
+    private QueryWrapper buildSameLevelQuery(String workspaceId, String parentId,
                                              String baseName, Boolean isDir,
                                              String excludeFileId, String storagePlatformSettingId) {
         QueryWrapper query = new QueryWrapper();
 
-        query.where(FILE_INFO.USER_ID.eq(userId))
+        query.where(FILE_INFO.WORKSPACE_ID.eq(workspaceId))
                 .and(FILE_INFO.IS_DIR.eq(isDir))
                 .and(FILE_INFO.IS_DELETED.eq(false));
 
@@ -476,6 +473,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     @Override
     public PageResult<FileVO> getList(FileQry qry) {
         String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
 
         int pageNum = qry.getPage() == null ? 1 : qry.getPage();
@@ -491,7 +489,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
                 .leftJoin(FILE_USER_FAVORITES.as("fuf"))
                 .on(FILE_INFO.ID.eq(FILE_USER_FAVORITES.FILE_ID)
                         .and(FILE_USER_FAVORITES.USER_ID.eq(userId)))
-                .where(FILE_INFO.USER_ID.eq(userId))
+                .where(FILE_INFO.WORKSPACE_ID.eq(workspaceId))
                 .and(FILE_INFO.IS_DELETED.eq(false));
         // 存储平台过滤
         if (StringUtils.isEmpty(storagePlatformSettingId)) {
@@ -579,15 +577,14 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
     @Override
     public Long calculateUsedStorage() {
-        String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
 
-        // 查询所有未删除的文件
         List<FileInfo> fileInfoList = this.list(new QueryWrapper()
-                .where(FILE_INFO.USER_ID.eq(userId)
+                .where(FILE_INFO.WORKSPACE_ID.eq(workspaceId)
                         .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
                         .and(FILE_INFO.IS_DELETED.eq(false))
-                        .and(FILE_INFO.IS_DIR.eq(false)) // 只统计文件，不统计文件夹
+                        .and(FILE_INFO.IS_DIR.eq(false))
                 ));
 
         // 统计总大小
@@ -602,7 +599,7 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
     public FileDetailVO getFileDetails(String fileId) {
         FileInfo fileInfo = getById(fileId);
         if (fileInfo == null) {
-            throw new BusinessException("文件不存在");
+            throw new BusinessException(I18nUtils.getMessage("file.not.found"));
         }
         FileDetailVO vo = converter.convert(fileInfo, FileDetailVO.class);
         if (vo.getIsDir()) {
@@ -629,12 +626,11 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
      * 递归统计文件夹信息
      */
     private void recursiveAccumulate(String parentId, Map<String, Long> stats) {
-        String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
-        // 查询当前目录下的直接子级
         List<FileInfo> children = this.list(new QueryWrapper()
                 .where(FILE_INFO.PARENT_ID.eq(parentId))
-                .and(FILE_INFO.USER_ID.eq(userId))
+                .and(FILE_INFO.WORKSPACE_ID.eq(workspaceId))
                 .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
                 .and(FILE_INFO.IS_DELETED.eq(false)));
 
@@ -658,10 +654,10 @@ public class FileInfoServiceImpl extends ServiceImpl<FileInfoMapper, FileInfo> i
 
     @Override
     public List<FileVO> getDirs(String parentId) {
-        String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         String storagePlatformSettingId = StoragePlatformContextHolder.getConfigId();
         QueryWrapper wrapper = new QueryWrapper();
-        wrapper.where(FILE_INFO.USER_ID.eq(userId)
+        wrapper.where(FILE_INFO.WORKSPACE_ID.eq(workspaceId)
                 .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storagePlatformSettingId))
                 .and(FILE_INFO.IS_DELETED.eq(false))
                 .and(FILE_INFO.IS_DIR.eq(true))

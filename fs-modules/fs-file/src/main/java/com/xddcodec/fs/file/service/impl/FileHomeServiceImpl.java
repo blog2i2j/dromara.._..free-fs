@@ -1,6 +1,5 @@
 package com.xddcodec.fs.file.service.impl;
 
-import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.xddcodec.fs.file.domain.FileInfo;
@@ -11,6 +10,7 @@ import com.xddcodec.fs.file.domain.vo.FileHomeVO;
 import com.xddcodec.fs.file.domain.vo.FileVO;
 import com.xddcodec.fs.file.service.FileHomeService;
 import com.xddcodec.fs.file.service.FileInfoService;
+import com.xddcodec.fs.framework.common.context.WorkspaceContext;
 import com.xddcodec.fs.framework.common.domain.PageResult;
 import com.xddcodec.fs.storage.plugin.core.context.StoragePlatformContextHolder;
 import lombok.RequiredArgsConstructor;
@@ -54,19 +54,16 @@ public class FileHomeServiceImpl implements FileHomeService {
     }
 
     public List<FileHomeUsedBytesVO> getFileHomeUsedBytes(FileHomeUsedBytesQry qry) {
-        String userId = StpUtil.getLoginIdAsString();
+        String workspaceId = WorkspaceContext.getWorkspaceId();
         String storageId = StoragePlatformContextHolder.getConfigId();
 
-        // 时间范围对齐 (00:00:00 到 23:59:59)
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime endTime = now.with(LocalTime.MAX);
         LocalDateTime startTime = calculateStartTime(qry.getDateType(), now);
 
-        // 查询数据：仅查询需要的两个字段，减少内存占用
-        // MyBatis-Flex 允许只查特定列，避免 SELECT *
         QueryWrapper queryWrapper = QueryWrapper.create()
                 .select(FILE_INFO.UPLOAD_TIME, FILE_INFO.SIZE)
-                .where(FILE_INFO.USER_ID.eq(userId))
+                .where(FILE_INFO.WORKSPACE_ID.eq(workspaceId))
                 .and(FILE_INFO.STORAGE_PLATFORM_SETTING_ID.eq(storageId))
                 .and(FILE_INFO.IS_DIR.eq(false))
                 .and(FILE_INFO.IS_DELETED.eq(false))

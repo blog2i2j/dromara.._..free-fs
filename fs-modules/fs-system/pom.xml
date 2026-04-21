@@ -40,7 +40,7 @@
         </dependency>
         <dependency>
             <groupId>com.xddcodec.fs</groupId>
-            <artifactId>fs-plan</artifactId>
+            <artifactId>fs-storage</artifactId>
         </dependency>
     </dependencies>
 

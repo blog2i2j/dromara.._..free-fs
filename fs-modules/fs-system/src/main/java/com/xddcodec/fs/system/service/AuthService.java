@@ -1,7 +1,7 @@
 package com.xddcodec.fs.system.service;
 
 import com.xddcodec.fs.system.domain.dto.LoginCmd;
-import com.xddcodec.fs.system.domain.vo.LoginUserVO;
+import com.xddcodec.fs.system.domain.vo.LoginResult;
 
 /**
  * 认证服务接口
@@ -17,10 +17,17 @@ public interface AuthService {
      * @param cmd
      * @return
      */
-    LoginUserVO doLogin(LoginCmd cmd);
+    LoginResult doLogin(LoginCmd cmd);
 
     /**
      * 退出登录
      */
     void logout();
+
+    /**
+     * 发送登录验证码
+     *
+     * @param account 账号（邮箱）
+     */
+    void sendLoginEmailCode(String account);
 }

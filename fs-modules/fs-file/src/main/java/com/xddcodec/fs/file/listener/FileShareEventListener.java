@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 /**
- * 登录事件监听器
+ * 文件分享访问记录监听器
  *
  * @Author: xddcodec
  * @Date: 2025/9/25 14:35

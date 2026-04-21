@@ -1,6 +1,6 @@
 package com.xddcodec.fs.storage.controller;
 
-import cn.dev33.satoken.stp.StpUtil;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.xddcodec.fs.framework.common.domain.Result;
 import com.xddcodec.fs.storage.domain.StoragePlatform;
 import com.xddcodec.fs.storage.domain.StorageSetting;
@@ -53,6 +53,7 @@ public class StorageController {
 
     @Operation(summary = "启用或禁用存储平台")
     @PostMapping("/settings/{id}/{action}")
+    @SaCheckPermission("storage:manage")
     public Result<StorageSetting> enableOrDisableStoragePlatform(@PathVariable("id") String id, @PathVariable("action") Integer action) {
         storageSettingService.enableOrDisableStoragePlatform(id, action);
         return Result.ok();
@@ -60,13 +61,15 @@ public class StorageController {
 
     @Operation(summary = "新增存储平台配置")
     @PostMapping("/settings")
+    @SaCheckPermission("storage:manage")
     public Result<StorageSetting> saveOrUpdateStorageSetting(@Validated @RequestBody StorageSettingAddCmd cmd) {
         storageSettingService.addStorageSetting(cmd);
         return Result.ok();
     }
 
-    @Operation(summary = "新增存储平台配置")
+    @Operation(summary = "编辑存储平台配置")
     @PutMapping("/settings")
+    @SaCheckPermission("storage:manage")
     public Result<StorageSetting> saveOrUpdateStorageSetting(@Validated @RequestBody StorageSettingEditCmd cmd) {
         storageSettingService.editStorageSetting(cmd);
         return Result.ok();
@@ -74,6 +77,7 @@ public class StorageController {
 
     @Operation(summary = "删除存储平台配置")
     @DeleteMapping("/settings/{id}")
+    @SaCheckPermission("storage:manage")
     public Result<StorageSetting> saveOrUpdateStorageSetting(@PathVariable String id) {
         storageSettingService.deleteStorageSettingById(id);
         return Result.ok();

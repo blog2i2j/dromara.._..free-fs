@@ -165,49 +165,18 @@ public class DownloadTaskExceptionHandler {
             return DownloadErrorCode.STORAGE_READ_FAILED;
         }
 
-        // 检查异常消息中的关键字
-        String message = e.getMessage();
-        if (message != null) {
-            message = message.toLowerCase();
-            
-            if (message.contains("not found") || message.contains("不存在") 
-                || e instanceof FileNotFoundException) {
-                return DownloadErrorCode.FILE_NOT_FOUND;
-            }
-            
-            if (message.contains("permission") || message.contains("权限") 
-                || message.contains("access denied") || message.contains("forbidden")) {
-                return DownloadErrorCode.PERMISSION_DENIED;
-            }
-            
-            if (message.contains("timeout") || message.contains("超时") 
-                || message.contains("timed out")) {
-                return DownloadErrorCode.NETWORK_TIMEOUT;
-            }
-            
-            if (message.contains("invalid") && message.contains("chunk")) {
-                return DownloadErrorCode.INVALID_CHUNK_INDEX;
-            }
+        // 根据异常类型判断（不依赖消息文本）
+        if (e instanceof FileNotFoundException) {
+            return DownloadErrorCode.FILE_NOT_FOUND;
         }
-
-        // 检查异常类型
-        if (e instanceof BusinessException) {
-            BusinessException be = (BusinessException) e;
-            String beMessage = be.getMessage();
-            if (beMessage != null) {
-                if (beMessage.contains("不存在") || beMessage.contains("not found")) {
-                    return DownloadErrorCode.FILE_NOT_FOUND;
-                }
-                if (beMessage.contains("权限") || beMessage.contains("permission")) {
-                    return DownloadErrorCode.PERMISSION_DENIED;
-                }
-                if (beMessage.contains("分片索引") || beMessage.contains("chunk index")) {
-                    return DownloadErrorCode.INVALID_CHUNK_INDEX;
-                }
-            }
-        }
-
+        
         if (e instanceof StorageOperationException) {
+            return DownloadErrorCode.STORAGE_READ_FAILED;
+        }
+        
+        if (e instanceof BusinessException) {
+            // 对于BusinessException，直接使用通用错误码
+            // 具体的错误信息已经在异常消息中了
             return DownloadErrorCode.STORAGE_READ_FAILED;
         }
 

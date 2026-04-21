@@ -10,17 +10,16 @@ import lombok.Data;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
- * 用户VO信息，用于展示用户信息
+ * 用户VO信息，用于展示用户信息（不含权限，权限从工作空间接口获取）
  *
  * @Author: xddcode
  * @Date: 2024/10/16 15:28
  */
 @Data
 @AutoMapper(target = SysUser.class)
-@Schema(description = "用户")
+@Schema(description = "用户信息")
 public class SysUserVO implements Serializable {
 
     @Serial
@@ -55,4 +54,7 @@ public class SysUserVO implements Serializable {
     @Schema(description = "最后登录时间")
     @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
     private LocalDateTime lastLoginAt;
+
+    @Schema(description = "是否设置密码")
+    private Boolean isSetPassword;
 }

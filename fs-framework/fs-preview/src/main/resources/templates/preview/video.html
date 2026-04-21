@@ -27,69 +27,80 @@
             background: var(--color-bg-2);
             height: 100vh;
             overflow: hidden;
+            /* 使用 flex 垂直布局 */
             display: flex;
             flex-direction: column;
             user-select: none;
         }
 
         .header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            /* 取消 absolute，改为相对定位使其占据文档流 */
+            position: relative;
             height: 48px;
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 20px;
-            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
-            z-index: 10;
+            /* 增加深色背景，确保在任何视频背景下都可见 */
+            background: #1a1a1a;
+            border-bottom: 1px solid var(--color-border);
+            z-index: 100;
             color: var(--color-text-1);
-            pointer-events: none;
-        }
-
-        .header > * {
-            pointer-events: auto;
         }
 
         .file-name {
             font-size: 14px;
+            font-weight: 500;
             opacity: 0.9;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            /* 限制超长文件名显示 */
+            max-width: 70%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .close-btn {
             cursor: pointer;
-            padding: 8px;
+            padding: 6px;
             border-radius: 4px;
-            transition: background 0.2s;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .close-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--color-fill-2);
         }
 
         #video-container {
+            /* flex: 1 会自动占据除去 header 后的所有剩余高度 */
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             background: #000;
             position: relative;
+            overflow: hidden;
+            /* 增加内边距，防止视频贴边 */
+            padding: 12px;
         }
 
         #video-player {
+            /* 核心：限制最大宽高为容器的 100% */
             max-width: 100%;
             max-height: 100%;
             width: auto;
             height: auto;
             outline: none;
+            /* 保持比例 */
+            object-fit: contain;
+            /* 增加轻微投影，更有质感 */
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
         }
 
-        /* Loading & Error */
+        /* Loading & Error 样式保持不变，但确保它们在容器中心 */
         .loading-container, .error-container {
             position: absolute;
             top: 50%;

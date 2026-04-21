@@ -18,6 +18,7 @@
         <module>storage-plugin-boot</module>
         <module>storage-plugin-core</module>
         <module>storage-plugin-local</module>
+        <module>storage-plugin-minio</module>
         <module>storage-plugin-aliyunoss</module>
         <module>storage-plugin-rustfs</module>
         <module>storage-plugin-kodo</module>

@@ -3,6 +3,7 @@ package com.xddcodec.fs.file.controller;
 import com.xddcodec.fs.file.preview.PreviewService;
 import com.xddcodec.fs.framework.common.constant.RedisKey;
 import com.xddcodec.fs.framework.common.domain.Result;
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
 import com.xddcodec.fs.framework.redis.repository.RedisRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -51,8 +52,8 @@ public class FilePreviewController {
             return previewService.preview(fileId, model);
         } catch (Exception e) {
             log.error("预览过程发生未捕获异常: fileId={}", fileId, e);
-            model.addAttribute("errorMessage", "系统错误");
-            model.addAttribute("errorDetail", "预览过程中发生了意外错误");
+            model.addAttribute("errorMessage", I18nUtils.getMessage("preview.system.error"));
+            model.addAttribute("errorDetail", I18nUtils.getMessage("preview.unexpected.error"));
             return "preview/error";
         }
     }
@@ -62,9 +63,9 @@ public class FilePreviewController {
         Object errorMessage = request.getAttribute("errorMessage");
         Object errorDetail = request.getAttribute("errorDetail");
         model.addAttribute("errorMessage",
-                errorMessage != null ? errorMessage : "预览失败");
+                errorMessage != null ? errorMessage : I18nUtils.getMessage("preview.failed"));
         model.addAttribute("errorDetail",
-                errorDetail != null ? errorDetail : "请返回重试");
+                errorDetail != null ? errorDetail : I18nUtils.getMessage("preview.retry"));
         return "preview/error";
     }
 }

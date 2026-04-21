@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 用户控制器
@@ -47,6 +48,34 @@ public class UserController {
     @PutMapping("/info")
     public Result<?> editUserInfo(@Validated @RequestBody UserEditInfoCmd cmd) {
         userService.editUserInfo(cmd);
+        return Result.ok();
+    }
+
+    @Operation(summary = "修改邮箱-发送邮箱验证码")
+    @PostMapping("/update-mail/code/{mail}")
+    public Result<?> sendUpdateMailCode(@PathVariable String mail) {
+        userService.sendUpdateMailCode(mail);
+        return Result.ok();
+    }
+
+    @Operation(summary = "修改邮箱-验证邮箱验证码")
+    @PutMapping("/update-mail/code/{mail}/{code}")
+    public Result<?> updateMail(@RequestBody UserEditMailCmd cmd) {
+        userService.updateMail(cmd);
+        return Result.ok();
+    }
+
+    @Operation(summary = "头像上传")
+    @PutMapping("/avatar")
+    public Result<?> uploadAvatar(@RequestParam MultipartFile file) {
+        userService.uploadAvatar(file);
+        return Result.ok();
+    }
+
+    @Operation(summary = "设置密码")
+    @PostMapping("/password")
+    public Result<?> setPassword(@Validated @RequestBody PasswordAddCmd cmd) {
+        userService.setPassword(cmd);
         return Result.ok();
     }
 

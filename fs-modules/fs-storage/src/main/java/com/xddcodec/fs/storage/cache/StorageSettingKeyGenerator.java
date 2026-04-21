@@ -1,6 +1,6 @@
 package com.xddcodec.fs.storage.cache;
 
-import cn.dev33.satoken.stp.StpUtil;
+import com.xddcodec.fs.framework.common.context.WorkspaceContext;
 import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.stereotype.Component;
 
@@ -11,7 +11,6 @@ public class StorageSettingKeyGenerator implements KeyGenerator {
 
     @Override
     public Object generate(Object target, Method method, Object... params) {
-        String userId = StpUtil.getLoginIdAsString();
-        return userId;
+        return WorkspaceContext.getWorkspaceId();
     }
 }

@@ -3,6 +3,7 @@ package com.xddcodec.fs.file.preview;
 import com.xddcodec.fs.file.domain.FileInfo;
 import com.xddcodec.fs.file.service.FileInfoService;
 import com.xddcodec.fs.framework.common.enums.FileTypeEnum;
+import com.xddcodec.fs.framework.common.utils.I18nUtils;
 import com.xddcodec.fs.framework.preview.config.FilePreviewConfig;
 import com.xddcodec.fs.framework.preview.core.PreviewContext;
 import com.xddcodec.fs.framework.preview.core.PreviewStrategy;
@@ -18,30 +19,31 @@ import java.time.LocalDateTime;
  */
 @Service
 @RequiredArgsConstructor
-public class    PreviewService {
+public class PreviewService {
     private final FileInfoService fileInfoService;
     private final PreviewStrategyManager strategyManager;
     private final FilePreviewConfig previewConfig;
 
     public String preview(String fileId, Model model) {
         if (fileId == null || fileId.trim().isEmpty()) {
-            return buildErrorPage(model, "文件ID无效", "文件ID不能为空");
+            return buildErrorPage(model, I18nUtils.getMessage("file.id.invalid"), I18nUtils.getMessage("file.id.empty"));
         }
         FileInfo fileInfo = fileInfoService.getById(fileId);
         if (fileInfo == null) {
-            return buildErrorPage(model, "文件不存在", "文件不存在或已被删除");
+            return buildErrorPage(model, I18nUtils.getMessage("file.not.found"), I18nUtils.getMessage("file.not.exist.or.deleted"));
         }
 
         if (fileInfo.getSize() > previewConfig.getMaxFileSize()) {
-            return buildErrorPage(model, "文件过大",
-                    String.format("文件大小超过预览限制（%dMB）",
-                            previewConfig.getMaxFileSize() / 1024 / 1024));
+            return buildErrorPage(model, I18nUtils.getMessage("file.too.large"),
+                    I18nUtils.getMessage("file.size.limit.exceeded", 
+                            new Object[]{previewConfig.getMaxFileSize() / 1024 / 1024}));
         }
 
         FileTypeEnum fileType = FileTypeEnum.fromFileName(fileInfo.getDisplayName());
         PreviewStrategy strategy = strategyManager.getStrategy(fileType);
         if (strategy == null) {
-            return buildErrorPage(model, "不支持的文件类型", "该文件类型暂不支持在线预览");
+            return buildErrorPage(model, I18nUtils.getMessage("preview.file.type.not.supported"), 
+                    I18nUtils.getMessage("preview.file.type.not.supported.detail"));
         }
 
         PreviewContext context = PreviewContext.builder()
