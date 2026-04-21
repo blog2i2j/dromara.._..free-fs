@@ -9,11 +9,6 @@ public class RedisKey {
     private static final String SEPARATOR = ":";
 
     /**
-     * 验证码key
-     */
-    private static final String VERIFY_CODE_KEY = "code";
-
-    /**
      * 验证码过期时间（5分钟）
      */
     public static final long VERIFY_CODE_EXPIRE_SECONDS = 5 * 60;
@@ -41,11 +36,42 @@ public class RedisKey {
     /**
      * 获取验证码key
      *
-     * @param email 邮箱
+     * @param prefix 前缀
+     * @param email  邮箱
      * @return fs:code:邮箱
      */
-    public static String getVerifyCodeKey(String email) {
-        return String.join(SEPARATOR, BASE_KEY, VERIFY_CODE_KEY, email);
+    public static String getVerifyCodeKey(String prefix, String email) {
+        return String.join(SEPARATOR, BASE_KEY, prefix, email);
+    }
+
+    /**
+     * 获取登录redis key
+     *
+     * @param email
+     * @return
+     */
+    public static String getLoginKey(String email) {
+        return getVerifyCodeKey("login", email);
+    }
+
+    /**
+     * 获取忘记密码redis key
+     *
+     * @param email
+     * @return
+     */
+    public static String getForgetPasswordKey(String email) {
+        return getVerifyCodeKey("forgetPassword", email);
+    }
+
+    /**
+     * 获取更新邮箱redis key
+     *
+     * @param email
+     * @return
+     */
+    public static String getUpdateMailKey(String email) {
+        return getVerifyCodeKey("updateMail", email);
     }
 
     /**

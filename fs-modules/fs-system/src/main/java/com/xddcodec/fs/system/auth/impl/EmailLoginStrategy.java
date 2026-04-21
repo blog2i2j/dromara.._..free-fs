@@ -45,7 +45,7 @@ public class EmailLoginStrategy implements LoginStrategy {
             throw new BusinessException(I18nUtils.getMessage("user.verification.code.required"));
         }
 
-        String redisKey = RedisKey.getVerifyCodeKey(account);
+        String redisKey = RedisKey.getLoginKey(account);
         String cachedCode = (String) redisRepository.get(redisKey);
 
         if (cachedCode == null) {

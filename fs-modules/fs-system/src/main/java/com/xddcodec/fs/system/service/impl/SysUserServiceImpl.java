@@ -107,7 +107,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         user.setNickname(cmd.getNickname());
         user.setAvatar(cmd.getAvatar());
         this.save(user);
-        
+
         // 初始化用户传输配置
         userTransferSettingService.initUserTransferSetting(user.getId());
 
@@ -131,6 +131,53 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     @Override
+    public void sendUpdateMailCode(String mail) {
+        String userId = StpUtil.getLoginIdAsString();
+        SysUser user = this.getById(userId);
+        if (user == null) {
+            throw new BusinessException(I18nUtils.getMessage("user.not.exist"));
+        }
+        SysUser existUser = this.getOne(new QueryWrapper().where(SYS_USER.EMAIL.eq(mail)));
+        if (existUser != null && !existUser.getId().equals(user.getId())) {
+            throw new BusinessException(I18nUtils.getMessage("user.email.exists"));
+        }
+        String code = RandomUtil.randomNumbers(CommonConstant.VERIFY_CODE_LENGTH);
+        String redisKey = RedisKey.getUpdateMailKey(mail);
+        redisRepository.setExpire(redisKey, code, RedisKey.VERIFY_CODE_EXPIRE_SECONDS);
+
+        Mail mailObj = Mail.buildVerifyCodeMail(mail, user.getNickname(), code);
+        eventPublisher.publishEvent(new MailEvent(this, mailObj));
+    }
+
+    @Override
+    public void updateMail(UserEditMailCmd cmd) {
+        String userId = StpUtil.getLoginIdAsString();
+        SysUser user = this.getById(userId);
+        if (user == null) {
+            throw new BusinessException(I18nUtils.getMessage("user.not.exist"));
+        }
+        String email = cmd.getEmail();
+        SysUser existUser = this.getOne(new QueryWrapper().where(SYS_USER.EMAIL.eq(email)));
+        if (existUser != null && !existUser.getId().equals(user.getId())) {
+            throw new BusinessException(I18nUtils.getMessage("user.email.exists"));
+        }
+        String code = cmd.getCode();
+        String redisKey = RedisKey.getUpdateMailKey(email);
+        String redisCode = (String) redisRepository.get(redisKey);
+        if (!code.equals(redisCode)) {
+            throw new BusinessException(I18nUtils.getMessage("user.verification.code.incorrect"));
+        }
+
+        user.setEmail(cmd.getEmail());
+        this.updateById(user);
+
+        Cache userCache = cacheManager.getCache("user");
+        if (userCache != null) {
+            userCache.evict(user.getId());
+        }
+    }
+
+    @Override
     public void uploadAvatar(MultipartFile file) {
         String userId = StpUtil.getLoginIdAsString();
         SysUser existUser = this.getById(userId);
@@ -141,15 +188,14 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         String avatarUrl;
         try {
             IStorageOperationService storageOperationService = pluginManager.getLocalInstance();
-            // 1. 优化路径拼接与命名，防止路径穿越
+            // 优化路径拼接与命名，防止路径穿越
             String suffix = FileUtil.getSuffix(file.getOriginalFilename());
             String fileName = userId + "_" + System.currentTimeMillis() + "." + suffix;
             String avatarPath = applicationName + CommonConstant.AVATAR_SAVE_PATH + "/" + userId;
 
-            // 建议：目录创建逻辑可以封装在 storageOperationService 内部
+            // 目录创建逻辑可以封装在 storageOperationService 内部
             String objectKey = avatarPath + "/" + fileName;
 
-            // 2. 执行 IO 上传（不在事务内）
             storageOperationService.uploadFile(file.getInputStream(), objectKey);
             avatarUrl = storageOperationService.getFileUrl(objectKey, null);
         } catch (Exception e) {
@@ -206,7 +252,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             throw new BusinessException(I18nUtils.getMessage("user.not.exist"));
         }
         String code = RandomUtil.randomNumbers(CommonConstant.VERIFY_CODE_LENGTH);
-        String redisKey = RedisKey.getVerifyCodeKey(email);
+        String redisKey = RedisKey.getForgetPasswordKey(email);
         redisRepository.setExpire(redisKey, code, RedisKey.VERIFY_CODE_EXPIRE_SECONDS);
 
         Mail mail = Mail.buildVerifyCodeMail(email, user.getNickname(), code);
@@ -221,7 +267,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             throw new BusinessException(I18nUtils.getMessage("user.not.exist"));
         }
         String code = cmd.getCode();
-        String redisKey = RedisKey.getVerifyCodeKey(email);
+        String redisKey = RedisKey.getForgetPasswordKey(email);
         String redisCode = (String) redisRepository.get(redisKey);
         if (!code.equals(redisCode)) {
             throw new BusinessException(I18nUtils.getMessage("user.verification.code.incorrect"));

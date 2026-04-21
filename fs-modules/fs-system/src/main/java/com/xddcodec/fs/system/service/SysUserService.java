@@ -53,6 +53,20 @@ public interface SysUserService extends IService<SysUser> {
     void editUserInfo(UserEditInfoCmd cmd);
 
     /**
+     * 修改邮箱-发送邮箱验证码
+     *
+     * @param mail
+     */
+    void sendUpdateMailCode(String mail);
+
+    /**
+     * 修改邮箱-验证邮箱验证码
+     *
+     * @param cmd
+     */
+    void updateMail(UserEditMailCmd cmd);
+
+    /**
      * 上传头像
      *
      * @param file

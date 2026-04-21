@@ -51,6 +51,20 @@ public class UserController {
         return Result.ok();
     }
 
+    @Operation(summary = "修改邮箱-发送邮箱验证码")
+    @PostMapping("/update-mail/code/{mail}")
+    public Result<?> sendUpdateMailCode(@PathVariable String mail) {
+        userService.sendUpdateMailCode(mail);
+        return Result.ok();
+    }
+
+    @Operation(summary = "修改邮箱-验证邮箱验证码")
+    @PutMapping("/update-mail/code/{mail}/{code}")
+    public Result<?> updateMail(@RequestBody UserEditMailCmd cmd) {
+        userService.updateMail(cmd);
+        return Result.ok();
+    }
+
     @Operation(summary = "头像上传")
     @PutMapping("/avatar")
     public Result<?> uploadAvatar(@RequestParam MultipartFile file) {

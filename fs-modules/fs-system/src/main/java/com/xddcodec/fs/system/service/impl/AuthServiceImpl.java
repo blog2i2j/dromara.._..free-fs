@@ -73,7 +73,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 生成验证码
         String code = RandomUtil.randomNumbers(CommonConstant.VERIFY_CODE_LENGTH);
-        String redisKey = RedisKey.getVerifyCodeKey(account);
+        String redisKey = RedisKey.getLoginKey(account);
         redisRepository.setExpire(redisKey, code, RedisKey.VERIFY_CODE_EXPIRE_SECONDS);
 
         // 发送邮件
