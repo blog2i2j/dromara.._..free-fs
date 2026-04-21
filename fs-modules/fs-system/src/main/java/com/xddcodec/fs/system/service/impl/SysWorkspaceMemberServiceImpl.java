@@ -77,6 +77,11 @@ public class SysWorkspaceMemberServiceImpl extends ServiceImpl<SysWorkspaceMembe
         if (userId.equals(currentUserId)) {
             throw new BusinessException(I18nUtils.getMessage("member.cannot.modify.self"));
         }
+        //不能修改所有者角色
+        SysWorkspace workspace = workspaceMapper.selectOneById(workspaceId);
+        if (workspace != null && workspace.getOwnerId().equals(userId)) {
+            throw new BusinessException(I18nUtils.getMessage("member.cannot.modify.owner"));
+        }
 
         // 查询成员
         SysWorkspaceMember member = mapper.findByWorkspaceAndUser(workspaceId, userId);
